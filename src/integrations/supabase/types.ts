@@ -186,6 +186,9 @@ export type Database = {
       }
       cases: {
         Row: {
+          ai_analysis: Json | null
+          ai_analyzed_at: string | null
+          ai_status: string | null
           assigned_to: string | null
           client_id: string
           complexity: Database["public"]["Enums"]["level_indicator"] | null
@@ -214,6 +217,9 @@ export type Database = {
           urgency: Database["public"]["Enums"]["urgency_level"] | null
         }
         Insert: {
+          ai_analysis?: Json | null
+          ai_analyzed_at?: string | null
+          ai_status?: string | null
           assigned_to?: string | null
           client_id: string
           complexity?: Database["public"]["Enums"]["level_indicator"] | null
@@ -242,6 +248,9 @@ export type Database = {
           urgency?: Database["public"]["Enums"]["urgency_level"] | null
         }
         Update: {
+          ai_analysis?: Json | null
+          ai_analyzed_at?: string | null
+          ai_status?: string | null
           assigned_to?: string | null
           client_id?: string
           complexity?: Database["public"]["Enums"]["level_indicator"] | null
