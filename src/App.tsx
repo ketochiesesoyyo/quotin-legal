@@ -7,6 +7,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/layout/AppLayout";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import Clientes from "./pages/Clientes";
+import Propuestas from "./pages/Propuestas";
+import Documentos from "./pages/Documentos";
+import Servicios from "./pages/Servicios";
+import Honorarios from "./pages/Honorarios";
+import Plantillas from "./pages/Plantillas";
+import Usuarios from "./pages/Usuarios";
+import Configuracion from "./pages/Configuracion";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,14 +42,14 @@ const App = () => (
         <Routes>
           <Route path="/auth" element={<Auth />} />
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/clientes" element={<ProtectedRoute><div className="text-2xl">Clientes - Próximamente</div></ProtectedRoute>} />
-          <Route path="/propuestas" element={<ProtectedRoute><div className="text-2xl">Propuestas - Próximamente</div></ProtectedRoute>} />
-          <Route path="/documentos" element={<ProtectedRoute><div className="text-2xl">Documentos - Próximamente</div></ProtectedRoute>} />
-          <Route path="/servicios" element={<ProtectedRoute><div className="text-2xl">Servicios - Próximamente</div></ProtectedRoute>} />
-          <Route path="/honorarios" element={<ProtectedRoute><div className="text-2xl">Honorarios - Próximamente</div></ProtectedRoute>} />
-          <Route path="/plantillas" element={<ProtectedRoute><div className="text-2xl">Plantillas - Próximamente</div></ProtectedRoute>} />
-          <Route path="/usuarios" element={<ProtectedRoute><div className="text-2xl">Usuarios - Próximamente</div></ProtectedRoute>} />
-          <Route path="/configuracion" element={<ProtectedRoute><div className="text-2xl">Configuración - Próximamente</div></ProtectedRoute>} />
+          <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
+          <Route path="/propuestas" element={<ProtectedRoute><Propuestas /></ProtectedRoute>} />
+          <Route path="/documentos" element={<ProtectedRoute><Documentos /></ProtectedRoute>} />
+          <Route path="/servicios" element={<ProtectedRoute><Servicios /></ProtectedRoute>} />
+          <Route path="/honorarios" element={<ProtectedRoute><Honorarios /></ProtectedRoute>} />
+          <Route path="/plantillas" element={<ProtectedRoute><Plantillas /></ProtectedRoute>} />
+          <Route path="/usuarios" element={<ProtectedRoute><Usuarios /></ProtectedRoute>} />
+          <Route path="/configuracion" element={<ProtectedRoute><Configuracion /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
