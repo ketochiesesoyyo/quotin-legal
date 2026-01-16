@@ -36,8 +36,10 @@ export default function PropuestaEditar() {
   const queryClient = useQueryClient();
 
   // State for editor
-  const [background, setBackground] = useState("");
-  const [isBackgroundEdited, setIsBackgroundEdited] = useState(false);
+  const [userNotes, setUserNotes] = useState(""); // Notas crudas del usuario
+  const [proposalBackground, setProposalBackground] = useState(""); // Antecedentes finales
+  const [aiSuggestion, setAiSuggestion] = useState<string | undefined>(); // Sugerencia de IA
+  const [isAIProcessing, setIsAIProcessing] = useState(false);
   const [services, setServices] = useState<ServiceWithConfidence[]>([]);
   const [selectedPricingId, setSelectedPricingId] = useState<string | null>(null);
   const [customInitialPayment, setCustomInitialPayment] = useState(0);
@@ -45,7 +47,6 @@ export default function PropuestaEditar() {
   const [customRetainerMonths, setCustomRetainerMonths] = useState(12);
   const [paymentSplit, setPaymentSplit] = useState("50/50");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [aiSuggestion, setAiSuggestion] = useState<string | undefined>();
 
   // Fetch case data
   const { data: caseData, isLoading: loadingCase } = useQuery({
@@ -182,12 +183,14 @@ export default function PropuestaEditar() {
   // Initialize state from case data
   useEffect(() => {
     if (caseData) {
-      // Set background from AI analysis or notes
+      // Set user notes from case.notes
+      if (caseData.notes) {
+        setUserNotes(caseData.notes);
+      }
+      // Set proposal background from AI analysis summary if available
       const aiAnalysis = caseData.ai_analysis as AIAnalysis | null;
       if (aiAnalysis?.summary) {
-        setBackground(aiAnalysis.summary);
-      } else if (caseData.notes) {
-        setBackground(`Derivado de la conversación con el cliente, se identificó la siguiente necesidad: ${caseData.notes.substring(0, 300)}...`);
+        setProposalBackground(aiAnalysis.summary);
       }
 
       // Set pricing
@@ -251,20 +254,20 @@ export default function PropuestaEditar() {
 
     if (client) completed++;
     if (clientDocuments.length > 0) completed++;
-    if (background) completed++;
+    if (proposalBackground) completed++;
     if (services.some((s) => s.isSelected)) completed++;
     if (customInitialPayment > 0 || customMonthlyRetainer > 0) completed++;
 
     return Math.round((completed / total) * 100);
-  }, [client, clientDocuments, background, services, customInitialPayment, customMonthlyRetainer]);
+  }, [client, clientDocuments, proposalBackground, services, customInitialPayment, customMonthlyRetainer]);
 
   const progressSteps = useMemo(() => [
     { id: "client", label: "Cliente seleccionado", completed: !!client, active: !client },
     { id: "docs", label: "Documentos validados", completed: clientDocuments.length > 0, active: !!client && clientDocuments.length === 0 },
-    { id: "context", label: "Contexto capturado", completed: !!background, active: clientDocuments.length > 0 && !background },
-    { id: "services", label: "Servicios seleccionados", completed: services.some((s) => s.isSelected), active: !!background && !services.some((s) => s.isSelected) },
+    { id: "context", label: "Contexto capturado", completed: !!proposalBackground, active: clientDocuments.length > 0 && !proposalBackground },
+    { id: "services", label: "Servicios seleccionados", completed: services.some((s) => s.isSelected), active: !!proposalBackground && !services.some((s) => s.isSelected) },
     { id: "pricing", label: "Honorarios configurados", completed: customInitialPayment > 0 || customMonthlyRetainer > 0, active: services.some((s) => s.isSelected) && customInitialPayment === 0 && customMonthlyRetainer === 0 },
-  ], [client, clientDocuments, background, services, customInitialPayment, customMonthlyRetainer]);
+  ], [client, clientDocuments, proposalBackground, services, customInitialPayment, customMonthlyRetainer]);
 
   // Handlers
   const handleToggleService = (serviceId: string) => {
@@ -400,7 +403,7 @@ export default function PropuestaEditar() {
         legalName: e.legal_name,
         rfc: e.rfc,
       })),
-      background,
+      background: proposalBackground,
       validatedData: {
         rfc: entities[0]?.rfc || null,
         opinion32d: null,
@@ -432,7 +435,7 @@ export default function PropuestaEditar() {
           }
         : undefined,
     };
-  }, [client, entities, background, services, customInitialPayment, customMonthlyRetainer, customRetainerMonths, paymentSplit, firmSettings, primaryContact]);
+  }, [client, entities, proposalBackground, services, customInitialPayment, customMonthlyRetainer, customRetainerMonths, paymentSplit, firmSettings, primaryContact]);
 
   // Validated data for display
   const validatedData = useMemo(() => ({
@@ -486,20 +489,30 @@ export default function PropuestaEditar() {
 
               {/* Background */}
               <BackgroundSection
-                background={background}
-                isAIGenerated={!isBackgroundEdited}
+                userNotes={userNotes}
+                proposalBackground={proposalBackground}
                 aiSuggestion={aiSuggestion}
-                onUpdate={(text) => {
-                  setBackground(text);
-                  setIsBackgroundEdited(true);
-                }}
-                onApplySuggestion={() => {
-                  if (aiSuggestion) {
-                    setBackground(background + " " + aiSuggestion);
-                    setAiSuggestion(undefined);
+                isAIProcessing={isAIProcessing}
+                onUpdateNotes={setUserNotes}
+                onUpdateProposalBackground={setProposalBackground}
+                onRequestAIAnalysis={async () => {
+                  if (!userNotes.trim()) return;
+                  setIsAIProcessing(true);
+                  try {
+                    // Simulate AI processing - in production this would call the edge function
+                    await new Promise((resolve) => setTimeout(resolve, 2000));
+                    const generatedBackground = `Derivado de la información que amablemente nos ha sido proporcionada, sabemos que ${client?.alias || client?.group_name || "la empresa"} se dedica principalmente a ${client?.industry || "sus actividades comerciales"}. Asimismo, sabemos que actualmente operan con ${entities.length} razones sociales, así como una plantilla laboral de aproximadamente ${client?.employee_count || "varios"} colaboradores, sumado a los activos tangibles e intangibles propios de su operación.\n\n${userNotes}`;
+                    setAiSuggestion(generatedBackground);
+                  } catch (error) {
+                    toast({
+                      title: "Error",
+                      description: "No se pudo generar los antecedentes",
+                      variant: "destructive",
+                    });
+                  } finally {
+                    setIsAIProcessing(false);
                   }
                 }}
-                onDismissSuggestion={() => setAiSuggestion(undefined)}
               />
 
               {/* Validated Data */}
