@@ -199,6 +199,9 @@ export default function Honorarios() {
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>{editingTemplate ? "Editar Plantilla" : "Nueva Plantilla de Honorarios"}</DialogTitle>
+              <p className="text-sm text-muted-foreground">
+                Estos valores sirven como base para prellenar las propuestas. Podrás editarlos al momento de crear cada propuesta.
+              </p>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
