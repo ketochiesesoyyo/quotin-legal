@@ -558,8 +558,7 @@ export default function Propuestas() {
                           <DropdownMenuContent align="end">
                             {isDraft && (
                               <DropdownMenuItem onClick={() => {
-                                // TODO: Navigate to edit proposal
-                                toast({ title: "Editar propuesta", description: "Funcionalidad próximamente" });
+                                window.location.href = `/propuestas/${caseItem.id}/editar`;
                               }}>
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Editar Propuesta
