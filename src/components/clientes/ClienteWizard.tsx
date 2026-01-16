@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { StepIndicator } from "./StepIndicator";
@@ -20,7 +20,7 @@ const STEPS = [
   { number: 4, title: "Validación", description: "Revisar documentos" },
 ];
 
-const initialClientData: ClientFormData = {
+const defaultClientData: ClientFormData = {
   group_name: "",
   alias: "",
   notes: "",
@@ -35,18 +35,51 @@ const initialClientData: ClientFormData = {
   },
 };
 
-export function ClienteWizard() {
+interface ClienteWizardProps {
+  editMode?: boolean;
+  clientId?: string;
+  initialClientData?: ClientFormData;
+  initialEntities?: EntityFormData[];
+  initialDocuments?: Record<string, DocumentData[]>;
+  primaryContactId?: string;
+}
+
+export function ClienteWizard({
+  editMode = false,
+  clientId,
+  initialClientData,
+  initialEntities,
+  initialDocuments,
+  primaryContactId,
+}: ClienteWizardProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [createdClientId, setCreatedClientId] = useState<string | null>(null);
+  const [savedClientId, setSavedClientId] = useState<string | null>(clientId || null);
 
-  const [clientData, setClientData] = useState<ClientFormData>(initialClientData);
-  const [entities, setEntities] = useState<EntityFormData[]>([
-    { id: crypto.randomUUID(), legal_name: "", rfc: "" },
-  ]);
-  const [documents, setDocuments] = useState<Record<string, DocumentData[]>>({});
+  const [clientData, setClientData] = useState<ClientFormData>(
+    initialClientData || defaultClientData
+  );
+  const [entities, setEntities] = useState<EntityFormData[]>(
+    initialEntities || [{ id: crypto.randomUUID(), legal_name: "", rfc: "" }]
+  );
+  const [documents, setDocuments] = useState<Record<string, DocumentData[]>>(
+    initialDocuments || {}
+  );
+
+  // Update state when initial data changes (for edit mode)
+  useEffect(() => {
+    if (initialClientData) {
+      setClientData(initialClientData);
+    }
+    if (initialEntities && initialEntities.length > 0) {
+      setEntities(initialEntities);
+    }
+    if (initialDocuments) {
+      setDocuments(initialDocuments);
+    }
+  }, [initialClientData, initialEntities, initialDocuments]);
 
   const hasDocuments = Object.values(documents).some(
     (docs) => docs.filter((d) => d.status !== "pendiente").length > 0
@@ -81,87 +114,188 @@ export function ClienteWizard() {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      // 1. Create the client
-      const { data: client, error: clientError } = await supabase
-        .from("clients")
-        .insert({
-          group_name: clientData.group_name,
-          alias: clientData.alias || null,
-          notes: clientData.notes || null,
-          industry: clientData.industry || null,
-          annual_revenue: clientData.annual_revenue || null,
-          employee_count: clientData.employee_count,
-          status: hasDocuments ? "completo" : "incompleto",
-          created_by: user?.id,
-        })
-        .select()
-        .single();
+      if (editMode && clientId) {
+        // UPDATE existing client
+        const { error: clientError } = await supabase
+          .from("clients")
+          .update({
+            group_name: clientData.group_name,
+            alias: clientData.alias || null,
+            notes: clientData.notes || null,
+            industry: clientData.industry || null,
+            annual_revenue: clientData.annual_revenue || null,
+            employee_count: clientData.employee_count,
+            status: hasDocuments ? "completo" : "incompleto",
+          })
+          .eq("id", clientId);
 
-      if (clientError) throw clientError;
+        if (clientError) throw clientError;
 
-      // 2. Create the primary contact
-      const { error: contactError } = await supabase
-        .from("client_contacts")
-        .insert({
-          client_id: client.id,
-          full_name: clientData.contact.full_name,
-          position: clientData.contact.position || null,
-          email: clientData.contact.email,
-          phone: clientData.contact.phone || null,
-          is_primary: true,
-        });
+        // Update or create primary contact
+        if (primaryContactId) {
+          const { error: contactError } = await supabase
+            .from("client_contacts")
+            .update({
+              full_name: clientData.contact.full_name,
+              position: clientData.contact.position || null,
+              email: clientData.contact.email,
+              phone: clientData.contact.phone || null,
+            })
+            .eq("id", primaryContactId);
 
-      if (contactError) throw contactError;
+          if (contactError) throw contactError;
+        } else {
+          const { error: contactError } = await supabase
+            .from("client_contacts")
+            .insert({
+              client_id: clientId,
+              full_name: clientData.contact.full_name,
+              position: clientData.contact.position || null,
+              email: clientData.contact.email,
+              phone: clientData.contact.phone || null,
+              is_primary: true,
+            });
 
-      // 3. Create entities and map old IDs to new IDs
-      const entityIdMap: Record<string, string> = {};
-      for (const entity of entities) {
-        const { data: newEntity, error: entityError } = await supabase
-          .from("client_entities")
+          if (contactError) throw contactError;
+        }
+
+        // Update entities: update existing, create new ones
+        for (const entity of entities) {
+          // Check if entity already exists in DB (has UUID format id that exists)
+          const { data: existingEntity } = await supabase
+            .from("client_entities")
+            .select("id")
+            .eq("id", entity.id || "")
+            .maybeSingle();
+
+          if (existingEntity) {
+            // Update existing
+            const { error } = await supabase
+              .from("client_entities")
+              .update({
+                legal_name: entity.legal_name,
+                rfc: entity.rfc,
+              })
+              .eq("id", entity.id);
+            if (error) throw error;
+          } else {
+            // Create new
+            const { data: newEntity, error } = await supabase
+              .from("client_entities")
+              .insert({
+                client_id: clientId,
+                legal_name: entity.legal_name,
+                rfc: entity.rfc,
+              })
+              .select()
+              .single();
+            if (error) throw error;
+            
+            // Update documents with new entity ID if there were any for this temp ID
+            if (entity.id && documents[entity.id]) {
+              const entityDocs = documents[entity.id];
+              for (const doc of entityDocs) {
+                if (doc.status === "pendiente") continue;
+                await supabase.from("client_documents").insert({
+                  entity_id: newEntity.id,
+                  document_type: doc.document_type,
+                  file_url: doc.file_url,
+                  file_name: doc.file_name,
+                  status: doc.status,
+                  notes: doc.notes,
+                  uploaded_at: new Date().toISOString(),
+                });
+              }
+            }
+          }
+        }
+
+        setSavedClientId(clientId);
+        setCurrentStep(5);
+        toast.success("Cliente actualizado exitosamente");
+      } else {
+        // CREATE new client
+        const { data: client, error: clientError } = await supabase
+          .from("clients")
           .insert({
-            client_id: client.id,
-            legal_name: entity.legal_name,
-            rfc: entity.rfc,
+            group_name: clientData.group_name,
+            alias: clientData.alias || null,
+            notes: clientData.notes || null,
+            industry: clientData.industry || null,
+            annual_revenue: clientData.annual_revenue || null,
+            employee_count: clientData.employee_count,
+            status: hasDocuments ? "completo" : "incompleto",
+            created_by: user?.id,
           })
           .select()
           .single();
 
-        if (entityError) throw entityError;
-        if (entity.id) {
-          entityIdMap[entity.id] = newEntity.id;
-        }
-      }
+        if (clientError) throw clientError;
 
-      // 4. Create documents with new entity IDs
-      for (const [oldEntityId, entityDocs] of Object.entries(documents)) {
-        const newEntityId = entityIdMap[oldEntityId];
-        if (!newEntityId) continue;
+        // Create the primary contact
+        const { error: contactError } = await supabase
+          .from("client_contacts")
+          .insert({
+            client_id: client.id,
+            full_name: clientData.contact.full_name,
+            position: clientData.contact.position || null,
+            email: clientData.contact.email,
+            phone: clientData.contact.phone || null,
+            is_primary: true,
+          });
 
-        for (const doc of entityDocs) {
-          if (doc.status === "pendiente") continue;
+        if (contactError) throw contactError;
 
-          const { error: docError } = await supabase
-            .from("client_documents")
+        // Create entities and map old IDs to new IDs
+        const entityIdMap: Record<string, string> = {};
+        for (const entity of entities) {
+          const { data: newEntity, error: entityError } = await supabase
+            .from("client_entities")
             .insert({
-              entity_id: newEntityId,
-              document_type: doc.document_type,
-              file_url: doc.file_url,
-              file_name: doc.file_name,
-              status: doc.status,
-              notes: doc.notes,
-              uploaded_at: new Date().toISOString(),
-            });
+              client_id: client.id,
+              legal_name: entity.legal_name,
+              rfc: entity.rfc,
+            })
+            .select()
+            .single();
 
-          if (docError) throw docError;
+          if (entityError) throw entityError;
+          if (entity.id) {
+            entityIdMap[entity.id] = newEntity.id;
+          }
         }
-      }
 
-      setCreatedClientId(client.id);
-      setCurrentStep(5); // Success step
-      toast.success("Cliente creado exitosamente");
+        // Create documents with new entity IDs
+        for (const [oldEntityId, entityDocs] of Object.entries(documents)) {
+          const newEntityId = entityIdMap[oldEntityId];
+          if (!newEntityId) continue;
+
+          for (const doc of entityDocs) {
+            if (doc.status === "pendiente") continue;
+
+            const { error: docError } = await supabase
+              .from("client_documents")
+              .insert({
+                entity_id: newEntityId,
+                document_type: doc.document_type,
+                file_url: doc.file_url,
+                file_name: doc.file_name,
+                status: doc.status,
+                notes: doc.notes,
+                uploaded_at: new Date().toISOString(),
+              });
+
+            if (docError) throw docError;
+          }
+        }
+
+        setSavedClientId(client.id);
+        setCurrentStep(5);
+        toast.success("Cliente creado exitosamente");
+      }
     } catch (error) {
-      console.error("Error creating client:", error);
-      toast.error("Error al crear el cliente");
+      console.error("Error saving client:", error);
+      toast.error(editMode ? "Error al actualizar el cliente" : "Error al crear el cliente");
     } finally {
       setIsSubmitting(false);
     }
@@ -171,14 +305,23 @@ export function ClienteWizard() {
     handleSubmit();
   };
 
+  const handleCancel = () => {
+    if (editMode && clientId) {
+      navigate(`/clientes/${clientId}`);
+    } else {
+      navigate("/clientes");
+    }
+  };
+
   // Success screen
-  if (currentStep === 5 && createdClientId) {
+  if (currentStep === 5 && savedClientId) {
     return (
       <StepSuccess
         clientData={clientData}
         entities={entities}
         documents={documents}
-        clientId={createdClientId}
+        clientId={savedClientId}
+        isEdit={editMode}
       />
     );
   }
@@ -220,7 +363,7 @@ export function ClienteWizard() {
       <div className="flex items-center justify-between pt-6 border-t">
         <div>
           {currentStep === 1 ? (
-            <Button variant="ghost" onClick={() => navigate("/clientes")}>
+            <Button variant="ghost" onClick={handleCancel}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Cancelar
             </Button>
@@ -240,7 +383,7 @@ export function ClienteWizard() {
               disabled={isSubmitting}
             >
               <SkipForward className="h-4 w-4 mr-2" />
-              Omitir y Finalizar
+              {editMode ? "Guardar sin Cambios" : "Omitir y Finalizar"}
             </Button>
           )}
 
@@ -268,7 +411,7 @@ export function ClienteWizard() {
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-                  Finalizar y Guardar
+                  {editMode ? "Guardar Cambios" : "Finalizar y Guardar"}
                 </>
               )}
             </Button>
