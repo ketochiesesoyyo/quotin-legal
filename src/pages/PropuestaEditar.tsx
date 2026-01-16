@@ -23,6 +23,7 @@ import type {
   AIAnalysis,
   ServiceWithConfidence,
   ProposalPreviewData,
+  FirmSettings,
 } from "@/components/propuestas/types";
 
 export default function PropuestaEditar() {
@@ -143,6 +144,19 @@ export default function PropuestaEditar() {
         .eq("is_active", true);
       if (error) throw error;
       return data as PricingTemplate[];
+    },
+  });
+
+  // Fetch firm settings
+  const { data: firmSettings } = useQuery({
+    queryKey: ["firm_settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("firm_settings")
+        .select("*")
+        .maybeSingle();
+      if (error) throw error;
+      return data as FirmSettings | null;
     },
   });
 
@@ -366,8 +380,19 @@ export default function PropuestaEditar() {
           : paymentSplit,
         roi: totalCost > 0 ? `${(estimatedSavings / totalCost).toFixed(1)}x` : "",
       },
+      firmSettings: firmSettings ? {
+        name: firmSettings.name,
+        logo_url: firmSettings.logo_url,
+        address: firmSettings.address,
+        phone: firmSettings.phone,
+        email: firmSettings.email,
+        website: firmSettings.website,
+        guarantees_text: firmSettings.guarantees_text,
+        disclaimers_text: firmSettings.disclaimers_text,
+        closing_text: firmSettings.closing_text,
+      } : undefined,
     };
-  }, [client, entities, background, services, customInitialPayment, customMonthlyRetainer, customRetainerMonths, paymentSplit]);
+  }, [client, entities, background, services, customInitialPayment, customMonthlyRetainer, customRetainerMonths, paymentSplit, firmSettings]);
 
   // Validated data for display
   const validatedData = useMemo(() => ({

@@ -53,6 +53,18 @@ export interface ProposalEditorState {
   completedSteps: string[];
 }
 
+export interface FirmSettings {
+  name: string;
+  logo_url?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  guarantees_text?: string | null;
+  disclaimers_text?: string | null;
+  closing_text?: string | null;
+}
+
 export interface ProposalPreviewData {
   clientName: string;
   entityCount: number;
@@ -71,4 +83,5 @@ export interface ProposalPreviewData {
     paymentScheme: string;
     roi: string;
   };
+  firmSettings?: FirmSettings;
 }
