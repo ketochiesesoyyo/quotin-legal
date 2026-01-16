@@ -16,7 +16,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import type { PricingTemplate } from "./types";
+import type { PricingTemplate, PricingMode } from "./types";
 
 interface PricingSectionProps {
   templates: PricingTemplate[];
@@ -28,6 +28,7 @@ interface PricingSectionProps {
   estimatedSavings: number;
   servicesTotalOneTime: number;
   servicesTotalMonthly: number;
+  pricingMode: PricingMode;
   onSelectTemplate: (templateId: string) => void;
   onUpdatePricing: (updates: {
     initialPayment?: number;
@@ -47,6 +48,7 @@ export function PricingSection({
   estimatedSavings,
   servicesTotalOneTime,
   servicesTotalMonthly,
+  pricingMode,
   onSelectTemplate,
   onUpdatePricing,
 }: PricingSectionProps) {
@@ -92,11 +94,13 @@ export function PricingSection({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Services-based pricing info */}
-        {(servicesTotalOneTime > 0 || servicesTotalMonthly > 0) && (
+        {/* Services-based pricing info - only show when not using global mode */}
+        {pricingMode !== 'global' && (servicesTotalOneTime > 0 || servicesTotalMonthly > 0) && (
           <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
             <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-2">
-              Calculado desde servicios seleccionados:
+              {pricingMode === 'per_service' 
+                ? 'Calculado desde servicios (desglose en propuesta):' 
+                : 'Calculado desde servicios (solo total en propuesta):'}
             </p>
             <div className="flex gap-4 text-sm">
               {servicesTotalOneTime > 0 && (
@@ -110,6 +114,16 @@ export function PricingSection({
                 </span>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Global mode indicator */}
+        {pricingMode === 'global' && (
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+            <p className="text-xs font-medium text-amber-700 dark:text-amber-300">
+              Modo global activo: Los precios individuales de servicios serán ignorados. 
+              Configura los honorarios manualmente o selecciona una plantilla.
+            </p>
           </div>
         )}
 

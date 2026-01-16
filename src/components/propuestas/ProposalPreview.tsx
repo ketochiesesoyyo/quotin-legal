@@ -238,8 +238,8 @@ export function ProposalPreview({
                   <p className="text-sm leading-relaxed mb-4">{FIXED_TEXTS.introHonorarios}</p>
 
                   <div className="space-y-4 mb-4">
-                    {/* Service-by-service breakdown */}
-                    {data.selectedServices.length > 0 && (
+                    {/* Service-by-service breakdown - only in per_service mode */}
+                    {data.pricingMode === 'per_service' && data.selectedServices.length > 0 && (
                       <div className="space-y-2">
                         {data.selectedServices.map((item, index) => {
                           const feeType = item.service.fee_type || 'one_time';

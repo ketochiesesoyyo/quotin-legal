@@ -210,6 +210,7 @@ export type Database = {
           price_sensitivity:
             | Database["public"]["Enums"]["level_indicator"]
             | null
+          pricing_mode: string | null
           project_reason: string | null
           proposal_content: Json | null
           result_reason: string | null
@@ -241,6 +242,7 @@ export type Database = {
           price_sensitivity?:
             | Database["public"]["Enums"]["level_indicator"]
             | null
+          pricing_mode?: string | null
           project_reason?: string | null
           proposal_content?: Json | null
           result_reason?: string | null
@@ -272,6 +274,7 @@ export type Database = {
           price_sensitivity?:
             | Database["public"]["Enums"]["level_indicator"]
             | null
+          pricing_mode?: string | null
           project_reason?: string | null
           proposal_content?: Json | null
           result_reason?: string | null
