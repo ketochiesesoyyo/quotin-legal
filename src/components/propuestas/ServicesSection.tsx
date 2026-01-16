@@ -14,10 +14,11 @@ import type { ServiceWithConfidence, PricingMode } from "./types";
 interface ServicesSectionProps {
   services: ServiceWithConfidence[];
   pricingMode: PricingMode;
-  onPricingModeChange: (mode: PricingMode) => void;
+  onPricingModeChange?: (mode: PricingMode) => void;
   onToggleService: (serviceId: string) => void;
   onUpdateCustomText: (serviceId: string, text: string) => void;
   onUpdateServiceFee: (serviceId: string, fee: number, isMonthly: boolean) => void;
+  showModeSelector?: boolean;
 }
 
 // Helper to format currency
@@ -276,6 +277,7 @@ export function ServicesSection({
   onToggleService,
   onUpdateCustomText,
   onUpdateServiceFee,
+  showModeSelector = true,
 }: ServicesSectionProps) {
   const preSelectedCount = services.filter((s) => s.confidence >= 80).length;
   const selectedCount = services.filter((s) => s.isSelected).length;
@@ -328,41 +330,43 @@ export function ServicesSection({
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Pricing Mode Selector */}
-        <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-          <Label className="text-sm font-medium">¿Cómo calcular honorarios?</Label>
-          <ToggleGroup
-            type="single"
-            value={pricingMode}
-            onValueChange={(value) => value && onPricingModeChange(value as PricingMode)}
-            className="justify-start flex-wrap gap-2"
-          >
-            <ToggleGroupItem
-              value="per_service"
-              className="flex items-center gap-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+        {/* Pricing Mode Selector - only show if showModeSelector is true */}
+        {showModeSelector && onPricingModeChange && (
+          <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+            <Label className="text-sm font-medium">¿Cómo calcular honorarios?</Label>
+            <ToggleGroup
+              type="single"
+              value={pricingMode}
+              onValueChange={(value) => value && onPricingModeChange(value as PricingMode)}
+              className="justify-start flex-wrap gap-2"
             >
-              <ListOrdered className="h-4 w-4" />
-              Por servicio
-            </ToggleGroupItem>
-            <ToggleGroupItem
-              value="summed"
-              className="flex items-center gap-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-            >
-              <Calculator className="h-4 w-4" />
-              Sumatoria total
-            </ToggleGroupItem>
-            <ToggleGroupItem
-              value="global"
-              className="flex items-center gap-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-            >
-              <Wallet className="h-4 w-4" />
-              Global / Plantilla
-            </ToggleGroupItem>
-          </ToggleGroup>
-          <p className="text-xs text-muted-foreground">
-            {getPricingModeDescription(pricingMode)}
-          </p>
-        </div>
+              <ToggleGroupItem
+                value="per_service"
+                className="flex items-center gap-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+              >
+                <ListOrdered className="h-4 w-4" />
+                Por servicio
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="summed"
+                className="flex items-center gap-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+              >
+                <Calculator className="h-4 w-4" />
+                Sumatoria total
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="global"
+                className="flex items-center gap-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+              >
+                <Wallet className="h-4 w-4" />
+                Global / Plantilla
+              </ToggleGroupItem>
+            </ToggleGroup>
+            <p className="text-xs text-muted-foreground">
+              {getPricingModeDescription(pricingMode)}
+            </p>
+          </div>
+        )}
         {/* Services list - always show regardless of pricing mode */}
         <div className="space-y-3">
           {services.map((item, index) => (

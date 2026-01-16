@@ -8,6 +8,7 @@ import { EditorHeader } from "@/components/propuestas/EditorHeader";
 import { ProgressIndicator } from "@/components/propuestas/ProgressIndicator";
 import { BackgroundSection } from "@/components/propuestas/BackgroundSection";
 import { ValidatedDataSection } from "@/components/propuestas/ValidatedDataSection";
+import { PricingModeSelector } from "@/components/propuestas/PricingModeSelector";
 import { ServicesSection } from "@/components/propuestas/ServicesSection";
 import { PricingSection } from "@/components/propuestas/PricingSection";
 import { ProposalPreview } from "@/components/propuestas/ProposalPreview";
@@ -684,17 +685,15 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
               {/* Validated Data */}
               <ValidatedDataSection data={validatedData} />
 
-              {/* Services */}
-              <ServicesSection
-                services={services}
+              {/* Pricing Mode Selector - always visible */}
+              <PricingModeSelector
                 pricingMode={pricingMode}
                 onPricingModeChange={handlePricingModeChange}
-                onToggleService={handleToggleService}
-                onUpdateCustomText={handleUpdateCustomText}
-                onUpdateServiceFee={handleUpdateServiceFee}
+                preSelectedCount={services.filter(s => s.confidence >= 80).length}
+                selectedCount={services.filter(s => s.isSelected).length}
               />
 
-              {/* Pricing - only show in global mode */}
+              {/* Pricing Section - appears BEFORE services when in global mode */}
               {pricingMode === 'global' && (
                 <PricingSection
                   templates={pricingTemplates}
@@ -707,6 +706,16 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                   onUpdatePricing={handleUpdatePricing}
                 />
               )}
+
+              {/* Services List - without mode selector since it's now separate */}
+              <ServicesSection
+                services={services}
+                pricingMode={pricingMode}
+                onToggleService={handleToggleService}
+                onUpdateCustomText={handleUpdateCustomText}
+                onUpdateServiceFee={handleUpdateServiceFee}
+                showModeSelector={false}
+              />
             </div>
           </ScrollArea>
         </div>
