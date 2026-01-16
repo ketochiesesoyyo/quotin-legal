@@ -26,6 +26,8 @@ interface PricingSectionProps {
   customRetainerMonths: number;
   paymentSplit: string;
   estimatedSavings: number;
+  servicesTotalOneTime: number;
+  servicesTotalMonthly: number;
   onSelectTemplate: (templateId: string) => void;
   onUpdatePricing: (updates: {
     initialPayment?: number;
@@ -43,6 +45,8 @@ export function PricingSection({
   customRetainerMonths,
   paymentSplit,
   estimatedSavings,
+  servicesTotalOneTime,
+  servicesTotalMonthly,
   onSelectTemplate,
   onUpdatePricing,
 }: PricingSectionProps) {
@@ -88,6 +92,27 @@ export function PricingSection({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Services-based pricing info */}
+        {(servicesTotalOneTime > 0 || servicesTotalMonthly > 0) && (
+          <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+            <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-2">
+              Calculado desde servicios seleccionados:
+            </p>
+            <div className="flex gap-4 text-sm">
+              {servicesTotalOneTime > 0 && (
+                <span className="text-blue-600 dark:text-blue-400">
+                  Único: <strong>{formatCurrency(servicesTotalOneTime)}</strong>
+                </span>
+              )}
+              {servicesTotalMonthly > 0 && (
+                <span className="text-blue-600 dark:text-blue-400">
+                  Mensual: <strong>{formatCurrency(servicesTotalMonthly)}</strong>
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Summary Cards */}
         <div className="grid grid-cols-3 gap-3">
           <div className="p-3 bg-muted/50 rounded-lg">

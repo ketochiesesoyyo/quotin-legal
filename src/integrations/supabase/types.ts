@@ -146,6 +146,8 @@ export type Database = {
         Row: {
           case_id: string
           created_at: string
+          custom_fee: number | null
+          custom_monthly_fee: number | null
           custom_text: string | null
           id: string
           service_id: string
@@ -154,6 +156,8 @@ export type Database = {
         Insert: {
           case_id: string
           created_at?: string
+          custom_fee?: number | null
+          custom_monthly_fee?: number | null
           custom_text?: string | null
           id?: string
           service_id: string
@@ -162,6 +166,8 @@ export type Database = {
         Update: {
           case_id?: string
           created_at?: string
+          custom_fee?: number | null
+          custom_monthly_fee?: number | null
           custom_text?: string | null
           id?: string
           service_id?: string

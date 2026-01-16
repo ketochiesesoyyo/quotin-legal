@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Sparkles, Check, ChevronDown, ChevronUp, Pencil } from "lucide-react";
+import { Sparkles, Check, ChevronDown, ChevronUp, Pencil, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { ServiceWithConfidence } from "./types";
 
@@ -12,18 +14,31 @@ interface ServicesSectionProps {
   services: ServiceWithConfidence[];
   onToggleService: (serviceId: string) => void;
   onUpdateCustomText: (serviceId: string, text: string) => void;
+  onUpdateServiceFee: (serviceId: string, fee: number, isMonthly: boolean) => void;
 }
+
+// Helper to format currency
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
 
 function ServiceCard({
   item,
   index,
   onToggle,
   onUpdateCustomText,
+  onUpdateFee,
 }: {
   item: ServiceWithConfidence;
   index: string;
   onToggle: () => void;
   onUpdateCustomText: (text: string) => void;
+  onUpdateFee: (fee: number, isMonthly: boolean) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditingText, setIsEditingText] = useState(false);
@@ -39,6 +54,22 @@ function ServiceCard({
     onUpdateCustomText(customText);
     setIsEditingText(false);
   };
+
+  // Determine which fees to show based on fee_type
+  const feeType = item.service.fee_type || 'one_time';
+  const showOneTimeFee = feeType === 'one_time' || feeType === 'both';
+  const showMonthlyFee = feeType === 'monthly' || feeType === 'both';
+
+  // Get current fee values (use custom if set, otherwise suggested)
+  const currentFee = item.customFee ?? (item.service.suggested_fee ? Number(item.service.suggested_fee) : 0);
+  const currentMonthlyFee = item.customMonthlyFee ?? (item.service.suggested_monthly_fee ? Number(item.service.suggested_monthly_fee) : 0);
+  
+  // Check if fees have been modified from suggested
+  const feeModified = item.customFee !== undefined && item.customFee !== Number(item.service.suggested_fee || 0);
+  const monthlyFeeModified = item.customMonthlyFee !== undefined && item.customMonthlyFee !== Number(item.service.suggested_monthly_fee || 0);
+
+  // Calculate subtotal for this service
+  const serviceSubtotal = (showOneTimeFee ? currentFee : 0) + (showMonthlyFee ? currentMonthlyFee : 0);
 
   return (
     <div
@@ -79,11 +110,48 @@ function ServiceCard({
             </div>
           </div>
 
+          {/* Price display (always visible when selected) */}
+          {item.isSelected && (
+            <div className="mt-3 flex items-center gap-4 flex-wrap">
+              {showOneTimeFee && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Único:</span>
+                  <span className={`text-sm font-semibold ${feeModified ? 'text-amber-600' : ''}`}>
+                    {formatCurrency(currentFee)}
+                  </span>
+                  {feeModified && (
+                    <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+                      Editado
+                    </Badge>
+                  )}
+                </div>
+              )}
+              {showMonthlyFee && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Mensual:</span>
+                  <span className={`text-sm font-semibold ${monthlyFeeModified ? 'text-amber-600' : ''}`}>
+                    {formatCurrency(currentMonthlyFee)}
+                  </span>
+                  {monthlyFeeModified && (
+                    <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+                      Editado
+                    </Badge>
+                  )}
+                </div>
+              )}
+              {(showOneTimeFee || showMonthlyFee) && serviceSubtotal > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  Subtotal: {formatCurrency(serviceSubtotal)}
+                </Badge>
+              )}
+            </div>
+          )}
+
           {item.isSelected && (
             <Collapsible open={isExpanded} onOpenChange={setIsExpanded} className="mt-3">
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" size="sm" className="w-full justify-between h-8">
-                  <span className="text-xs">Texto del servicio</span>
+                  <span className="text-xs">Personalizar servicio</span>
                   {isExpanded ? (
                     <ChevronUp className="h-4 w-4" />
                   ) : (
@@ -91,9 +159,58 @@ function ServiceCard({
                   )}
                 </Button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2">
+              <CollapsibleContent className="mt-2 space-y-4">
+                {/* Fee editing */}
+                <div className="bg-muted/30 rounded-lg p-3 space-y-3">
+                  <Label className="text-xs font-medium">Honorarios para esta propuesta</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {showOneTimeFee && (
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Pago único</Label>
+                        <div className="relative">
+                          <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                          <Input
+                            type="number"
+                            value={currentFee}
+                            onChange={(e) => onUpdateFee(parseFloat(e.target.value) || 0, false)}
+                            className="pl-7 h-8 text-sm"
+                            placeholder="0"
+                          />
+                        </div>
+                        {item.service.suggested_fee && Number(item.service.suggested_fee) > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Sugerido: {formatCurrency(Number(item.service.suggested_fee))}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {showMonthlyFee && (
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Iguala mensual</Label>
+                        <div className="relative">
+                          <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                          <Input
+                            type="number"
+                            value={currentMonthlyFee}
+                            onChange={(e) => onUpdateFee(parseFloat(e.target.value) || 0, true)}
+                            className="pl-7 h-8 text-sm"
+                            placeholder="0"
+                          />
+                        </div>
+                        {item.service.suggested_monthly_fee && Number(item.service.suggested_monthly_fee) > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Sugerido: {formatCurrency(Number(item.service.suggested_monthly_fee))}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Text customization */}
                 {isEditingText ? (
                   <div className="space-y-2">
+                    <Label className="text-xs font-medium">Texto del servicio</Label>
                     <Textarea
                       value={customText}
                       onChange={(e) => setCustomText(e.target.value)}
@@ -116,6 +233,7 @@ function ServiceCard({
                   </div>
                 ) : (
                   <div className="bg-muted/50 rounded-lg p-3">
+                    <Label className="text-xs font-medium mb-2 block">Texto del servicio</Label>
                     <p className="text-sm text-muted-foreground">
                       {customText || "Sin texto definido para este servicio."}
                     </p>
@@ -143,9 +261,30 @@ export function ServicesSection({
   services,
   onToggleService,
   onUpdateCustomText,
+  onUpdateServiceFee,
 }: ServicesSectionProps) {
   const preSelectedCount = services.filter((s) => s.confidence >= 80).length;
   const selectedCount = services.filter((s) => s.isSelected).length;
+  const selectedServices = services.filter((s) => s.isSelected);
+
+  // Calculate totals from selected services
+  const totalOneTime = selectedServices.reduce((sum, s) => {
+    const feeType = s.service.fee_type || 'one_time';
+    if (feeType === 'one_time' || feeType === 'both') {
+      const fee = s.customFee ?? (s.service.suggested_fee ? Number(s.service.suggested_fee) : 0);
+      return sum + fee;
+    }
+    return sum;
+  }, 0);
+
+  const totalMonthly = selectedServices.reduce((sum, s) => {
+    const feeType = s.service.fee_type || 'one_time';
+    if (feeType === 'monthly' || feeType === 'both') {
+      const fee = s.customMonthlyFee ?? (s.service.suggested_monthly_fee ? Number(s.service.suggested_monthly_fee) : 0);
+      return sum + fee;
+    }
+    return sum;
+  }, 0);
 
   const getLetter = (index: number) => String.fromCharCode(97 + index); // a, b, c, d...
 
@@ -171,12 +310,36 @@ export function ServicesSection({
             index={getLetter(index)}
             onToggle={() => onToggleService(item.service.id)}
             onUpdateCustomText={(text) => onUpdateCustomText(item.service.id, text)}
+            onUpdateFee={(fee, isMonthly) => onUpdateServiceFee(item.service.id, fee, isMonthly)}
           />
         ))}
 
         {services.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">
             <p>No hay servicios disponibles</p>
+          </div>
+        )}
+
+        {/* Totals summary */}
+        {selectedCount > 0 && (totalOneTime > 0 || totalMonthly > 0) && (
+          <div className="mt-4 pt-4 border-t">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Total de servicios seleccionados:</span>
+              <div className="flex items-center gap-4">
+                {totalOneTime > 0 && (
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Pago único</p>
+                    <p className="font-bold">{formatCurrency(totalOneTime)}</p>
+                  </div>
+                )}
+                {totalMonthly > 0 && (
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Mensual</p>
+                    <p className="font-bold">{formatCurrency(totalMonthly)}</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </CardContent>
