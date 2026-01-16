@@ -33,12 +33,14 @@ const formatCurrency = (amount: number) => {
 function ServiceCard({
   item,
   index,
+  pricingMode,
   onToggle,
   onUpdateCustomText,
   onUpdateFee,
 }: {
   item: ServiceWithConfidence;
   index: string;
+  pricingMode: PricingMode;
   onToggle: () => void;
   onUpdateCustomText: (text: string) => void;
   onUpdateFee: (fee: number, isMonthly: boolean) => void;
@@ -73,6 +75,9 @@ function ServiceCard({
 
   // Calculate subtotal for this service
   const serviceSubtotal = (showOneTimeFee ? currentFee : 0) + (showMonthlyFee ? currentMonthlyFee : 0);
+
+  // Determine if we should show price breakdown (only in per_service mode)
+  const showPriceBreakdown = pricingMode === 'per_service';
 
   return (
     <div
@@ -113,8 +118,8 @@ function ServiceCard({
             </div>
           </div>
 
-          {/* Price display (always visible when selected) */}
-          {item.isSelected && (
+          {/* Price display (only visible when selected AND in per_service mode) */}
+          {item.isSelected && showPriceBreakdown && (
             <div className="mt-3 flex items-center gap-4 flex-wrap">
               {showOneTimeFee && (
                 <div className="flex items-center gap-2">
@@ -150,11 +155,57 @@ function ServiceCard({
             </div>
           )}
 
+          {/* Standard text (always visible when selected) */}
           {item.isSelected && (
+            <div className="mt-3 bg-muted/30 rounded-lg p-3">
+              <Label className="text-xs font-medium mb-2 block text-muted-foreground">Texto estándar del servicio</Label>
+              {isEditingText ? (
+                <div className="space-y-2">
+                  <Textarea
+                    value={customText}
+                    onChange={(e) => setCustomText(e.target.value)}
+                    rows={4}
+                    className="text-sm resize-none"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsEditingText(false)}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button size="sm" onClick={handleSaveText}>
+                      <Check className="h-4 w-4 mr-1" />
+                      Guardar
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    {customText || "Sin texto definido para este servicio."}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => setIsEditingText(true)}
+                  >
+                    <Pencil className="h-3 w-3 mr-1" />
+                    Personalizar texto
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Fee editing collapsible (only in per_service mode) */}
+          {item.isSelected && showPriceBreakdown && (
             <Collapsible open={isExpanded} onOpenChange={setIsExpanded} className="mt-3">
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" size="sm" className="w-full justify-between h-8">
-                  <span className="text-xs">Personalizar servicio</span>
+                  <span className="text-xs">Editar honorarios</span>
                   {isExpanded ? (
                     <ChevronUp className="h-4 w-4" />
                   ) : (
@@ -209,48 +260,6 @@ function ServiceCard({
                     )}
                   </div>
                 </div>
-
-                {/* Text customization */}
-                {isEditingText ? (
-                  <div className="space-y-2">
-                    <Label className="text-xs font-medium">Texto del servicio</Label>
-                    <Textarea
-                      value={customText}
-                      onChange={(e) => setCustomText(e.target.value)}
-                      rows={4}
-                      className="text-sm resize-none"
-                    />
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setIsEditingText(false)}
-                      >
-                        Cancelar
-                      </Button>
-                      <Button size="sm" onClick={handleSaveText}>
-                        <Check className="h-4 w-4 mr-1" />
-                        Guardar
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-muted/50 rounded-lg p-3">
-                    <Label className="text-xs font-medium mb-2 block">Texto del servicio</Label>
-                    <p className="text-sm text-muted-foreground">
-                      {customText || "Sin texto definido para este servicio."}
-                    </p>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="mt-2"
-                      onClick={() => setIsEditingText(true)}
-                    >
-                      <Pencil className="h-3 w-3 mr-1" />
-                      Personalizar texto
-                    </Button>
-                  </div>
-                )}
               </CollapsibleContent>
             </Collapsible>
           )}
@@ -354,30 +363,29 @@ export function ServicesSection({
             {getPricingModeDescription(pricingMode)}
           </p>
         </div>
-        {/* Services list - collapsible when in global mode */}
-        {pricingMode !== 'global' && (
-          <div className="space-y-3">
-            {services.map((item, index) => (
-              <ServiceCard
-                key={item.service.id}
-                item={item}
-                index={getLetter(index)}
-                onToggle={() => onToggleService(item.service.id)}
-                onUpdateCustomText={(text) => onUpdateCustomText(item.service.id, text)}
-                onUpdateFee={(fee, isMonthly) => onUpdateServiceFee(item.service.id, fee, isMonthly)}
-              />
-            ))}
+        {/* Services list - always show regardless of pricing mode */}
+        <div className="space-y-3">
+          {services.map((item, index) => (
+            <ServiceCard
+              key={item.service.id}
+              item={item}
+              index={getLetter(index)}
+              pricingMode={pricingMode}
+              onToggle={() => onToggleService(item.service.id)}
+              onUpdateCustomText={(text) => onUpdateCustomText(item.service.id, text)}
+              onUpdateFee={(fee, isMonthly) => onUpdateServiceFee(item.service.id, fee, isMonthly)}
+            />
+          ))}
 
-            {services.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>No hay servicios disponibles</p>
-              </div>
-            )}
-          </div>
-        )}
+          {services.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No hay servicios disponibles</p>
+            </div>
+          )}
+        </div>
 
-        {/* Totals summary - only show when not using global mode */}
-        {pricingMode !== 'global' && selectedCount > 0 && (totalOneTime > 0 || totalMonthly > 0) && (
+        {/* Totals summary - only show in per_service mode */}
+        {pricingMode === 'per_service' && selectedCount > 0 && (totalOneTime > 0 || totalMonthly > 0) && (
           <div className="mt-4 pt-4 border-t">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Total de servicios seleccionados:</span>
