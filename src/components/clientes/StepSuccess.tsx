@@ -9,9 +9,10 @@ interface StepSuccessProps {
   entities: EntityFormData[];
   documents: Record<string, DocumentData[]>;
   clientId: string;
+  isEdit?: boolean;
 }
 
-export function StepSuccess({ clientData, entities, documents, clientId }: StepSuccessProps) {
+export function StepSuccess({ clientData, entities, documents, clientId, isEdit = false }: StepSuccessProps) {
   const navigate = useNavigate();
 
   const totalDocuments = Object.values(documents).reduce(
@@ -33,9 +34,13 @@ export function StepSuccess({ clientData, entities, documents, clientId }: StepS
         <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4 animate-in zoom-in duration-300">
           <CheckCircle2 className="h-10 w-10 text-primary" />
         </div>
-        <h2 className="text-2xl font-bold">¡Cliente Creado Exitosamente!</h2>
+        <h2 className="text-2xl font-bold">
+          {isEdit ? "¡Cliente Actualizado!" : "¡Cliente Creado Exitosamente!"}
+        </h2>
         <p className="text-muted-foreground mt-2">
-          {clientData.group_name} ha sido agregado a tu cartera de clientes
+          {isEdit 
+            ? `Los cambios en ${clientData.group_name} han sido guardados`
+            : `${clientData.group_name} ha sido agregado a tu cartera de clientes`}
         </p>
       </div>
 
