@@ -4,6 +4,7 @@ export type Case = Tables<"cases">;
 export type Client = Tables<"clients">;
 export type ClientEntity = Tables<"client_entities">;
 export type ClientDocument = Tables<"client_documents">;
+export type ClientContact = Tables<"client_contacts">;
 export type Service = Tables<"services">;
 export type CaseService = Tables<"case_services">;
 export type PricingTemplate = Tables<"pricing_templates">;
@@ -65,23 +66,60 @@ export interface FirmSettings {
   closing_text?: string | null;
 }
 
+export interface PrimaryContact {
+  fullName: string;
+  position?: string | null;
+}
+
+export interface EntityInfo {
+  legalName: string;
+  rfc?: string | null;
+}
+
 export interface ProposalPreviewData {
+  // Document date
+  documentDate: string;
+  
+  // Primary contact
+  primaryContact: PrimaryContact | null;
+  
+  // Client info
   clientName: string;
+  groupAlias: string;
+  industry: string;
   entityCount: number;
   annualRevenue: string;
   employeeCount: number;
+  
+  // Entities list
+  entities: EntityInfo[];
+  
+  // Background
   background: string;
+  
+  // Validated data (optional for now)
   validatedData: {
     rfc: string | null;
     opinion32d: string | null;
     declaredIncome: string | null;
     unusedDeductions: string | null;
   };
+  
+  // Selected services
   selectedServices: ServiceWithConfidence[];
+  
+  // Pricing details
   pricing: {
-    baseAmount: number;
-    paymentScheme: string;
+    initialPayment: number;
+    initialPaymentDescription: string;
+    paymentSplit: string;
+    monthlyRetainer: number;
+    retainerMonths: number;
+    exclusionsText?: string | null;
+    totalAmount: number;
     roi: string;
   };
+  
+  // Firm settings
   firmSettings?: FirmSettings;
 }
