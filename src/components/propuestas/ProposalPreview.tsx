@@ -238,18 +238,51 @@ export function ProposalPreview({
                   <p className="text-sm leading-relaxed mb-4">{FIXED_TEXTS.introHonorarios}</p>
 
                   <div className="space-y-4 mb-4">
-                    {/* Initial payment */}
+                    {/* Service-by-service breakdown */}
+                    {data.selectedServices.length > 0 && (
+                      <div className="space-y-2">
+                        {data.selectedServices.map((item, index) => {
+                          const feeType = item.service.fee_type || 'one_time';
+                          const showOneTime = feeType === 'one_time' || feeType === 'both';
+                          const showMonthly = feeType === 'monthly' || feeType === 'both';
+                          const fee = item.customFee ?? (item.service.suggested_fee ? Number(item.service.suggested_fee) : 0);
+                          const monthlyFee = item.customMonthlyFee ?? (item.service.suggested_monthly_fee ? Number(item.service.suggested_monthly_fee) : 0);
+                          
+                          // Only show if there's a fee to display
+                          if ((!showOneTime || fee === 0) && (!showMonthly || monthlyFee === 0)) {
+                            return null;
+                          }
+
+                          return (
+                            <div key={item.service.id} className="pl-4">
+                              <p className="text-sm">
+                                <strong>{String.fromCharCode(97 + index)}) {item.service.name}:</strong>{" "}
+                                {showOneTime && fee > 0 && (
+                                  <>
+                                    Un pago de <strong>{formatCurrency(fee)}</strong> más IVA
+                                    {showMonthly && monthlyFee > 0 ? ", más " : "."}
+                                  </>
+                                )}
+                                {showMonthly && monthlyFee > 0 && (
+                                  <>
+                                    una iguala mensual de <strong>{formatCurrency(monthlyFee)}</strong> más IVA.
+                                  </>
+                                )}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Summary totals */}
                     {data.pricing.initialPayment > 0 && (
-                      <div className="pl-4">
+                      <div className="pl-4 mt-4 pt-2 border-t border-dashed">
                         <p className="text-sm">
-                          <strong>a)</strong> Un pago inicial en cantidad de{" "}
-                          <strong>{formatCurrency(data.pricing.initialPayment)}</strong> más IVA
-                          correspondiente al{" "}
-                          {data.pricing.initialPaymentDescription ||
-                            "estudio, análisis y propuesta de reestructura corporativa y fiscal"}
-                          .
-                          {data.pricing.paymentSplit && (
-                            <> Dicho honorario será cubierto {data.pricing.paymentSplit.replace("/", "% al momento de aceptación de la presente propuesta y ")}% restante al momento de presentación de la propuesta.</>
+                          <strong>Total pago inicial:</strong>{" "}
+                          <strong>{formatCurrency(data.pricing.initialPayment)}</strong> más IVA.
+                          {data.pricing.paymentSplit && data.pricing.paymentSplit !== "100" && (
+                            <> Dicho honorario podrá ser cubierto en {data.pricing.paymentSplit.split("/").length} exhibiciones ({data.pricing.paymentSplit}).</>
                           )}
                         </p>
                       </div>
@@ -259,14 +292,11 @@ export function ProposalPreview({
                     {data.pricing.monthlyRetainer > 0 && (
                       <div className="pl-4">
                         <p className="text-sm">
-                          <strong>b)</strong> Una iguala mensual en cantidad de{" "}
+                          <strong>Total iguala mensual:</strong>{" "}
                           <strong>{formatCurrency(data.pricing.monthlyRetainer)}</strong> más IVA por
                           un plazo de {data.pricing.retainerMonths} meses a fin de realizar las
-                          labores de ejecución, implementación y acompañamiento de la propuesta. El
-                          inicio de esta etapa será a libre decisión del cliente, por lo que, en caso
-                          de optar por no continuar con el servicio, podrá libremente hacerlo sin
-                          penalidad alguna bastando una comunicación escrita o por correo electrónico
-                          a {firmName}.
+                          labores de ejecución, implementación y acompañamiento. El
+                          inicio de esta etapa será a libre decisión del cliente.
                         </p>
                       </div>
                     )}

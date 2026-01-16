@@ -236,6 +236,8 @@ export default function PropuestaEditar() {
             confidence: isSuggested ? 85 + Math.floor(Math.random() * 15) : 50 + Math.floor(Math.random() * 20),
             isSelected,
             customText: existingCaseService?.custom_text || undefined,
+            customFee: existingCaseService?.custom_fee ? Number(existingCaseService.custom_fee) : undefined,
+            customMonthlyFee: existingCaseService?.custom_monthly_fee ? Number(existingCaseService.custom_monthly_fee) : undefined,
           };
         }
       );
@@ -272,37 +274,92 @@ export default function PropuestaEditar() {
   // Handlers
   const handleToggleService = (serviceId: string) => {
     setServices((prev) => {
-      const updated = prev.map((s) =>
-        s.service.id === serviceId ? { ...s, isSelected: !s.isSelected } : s
-      );
-      
-      // Recalculate pricing based on selected services
-      const selectedServices = updated.filter((s) => s.isSelected);
-      let totalOneTime = 0;
-      let totalMonthly = 0;
-      
-      selectedServices.forEach((s) => {
-        const fee = s.service.suggested_fee;
-        const monthlyFee = s.service.suggested_monthly_fee;
-        
-        if (fee && typeof fee === 'number') {
-          totalOneTime += fee;
+      const updated = prev.map((s) => {
+        if (s.service.id === serviceId) {
+          const newIsSelected = !s.isSelected;
+          // Initialize custom fees from suggested when selecting
+          if (newIsSelected && s.customFee === undefined) {
+            return {
+              ...s,
+              isSelected: newIsSelected,
+              customFee: s.service.suggested_fee ? Number(s.service.suggested_fee) : undefined,
+              customMonthlyFee: s.service.suggested_monthly_fee ? Number(s.service.suggested_monthly_fee) : undefined,
+            };
+          }
+          return { ...s, isSelected: newIsSelected };
         }
-        if (monthlyFee && typeof monthlyFee === 'number') {
-          totalMonthly += monthlyFee;
-        }
+        return s;
       });
       
-      // Only update if we have suggested fees (don't override if manually set)
-      if (totalOneTime > 0 || totalMonthly > 0) {
-        setCustomInitialPayment(totalOneTime);
-        setCustomMonthlyRetainer(totalMonthly);
-        setSelectedPricingId(null); // Clear template since using service-based pricing
-      }
+      // Recalculate pricing based on selected services
+      recalculatePricingFromServices(updated);
       
       return updated;
     });
   };
+
+  const handleUpdateServiceFee = (serviceId: string, fee: number, isMonthly: boolean) => {
+    setServices((prev) => {
+      const updated = prev.map((s) =>
+        s.service.id === serviceId
+          ? isMonthly
+            ? { ...s, customMonthlyFee: fee }
+            : { ...s, customFee: fee }
+          : s
+      );
+      
+      // Recalculate pricing
+      recalculatePricingFromServices(updated);
+      
+      return updated;
+    });
+  };
+
+  const recalculatePricingFromServices = (servicesList: ServiceWithConfidence[]) => {
+    const selectedServices = servicesList.filter((s) => s.isSelected);
+    let totalOneTime = 0;
+    let totalMonthly = 0;
+    
+    selectedServices.forEach((s) => {
+      const feeType = s.service.fee_type || 'one_time';
+      if (feeType === 'one_time' || feeType === 'both') {
+        const fee = s.customFee ?? (s.service.suggested_fee ? Number(s.service.suggested_fee) : 0);
+        totalOneTime += fee;
+      }
+      if (feeType === 'monthly' || feeType === 'both') {
+        const fee = s.customMonthlyFee ?? (s.service.suggested_monthly_fee ? Number(s.service.suggested_monthly_fee) : 0);
+        totalMonthly += fee;
+      }
+    });
+    
+    // Update pricing state
+    if (totalOneTime > 0 || totalMonthly > 0) {
+      setCustomInitialPayment(totalOneTime);
+      setCustomMonthlyRetainer(totalMonthly);
+      setSelectedPricingId(null); // Clear template since using service-based pricing
+    }
+  };
+
+  // Calculate totals from services for display in PricingSection
+  const servicesTotals = useMemo(() => {
+    const selectedServices = services.filter((s) => s.isSelected);
+    let totalOneTime = 0;
+    let totalMonthly = 0;
+    
+    selectedServices.forEach((s) => {
+      const feeType = s.service.fee_type || 'one_time';
+      if (feeType === 'one_time' || feeType === 'both') {
+        const fee = s.customFee ?? (s.service.suggested_fee ? Number(s.service.suggested_fee) : 0);
+        totalOneTime += fee;
+      }
+      if (feeType === 'monthly' || feeType === 'both') {
+        const fee = s.customMonthlyFee ?? (s.service.suggested_monthly_fee ? Number(s.service.suggested_monthly_fee) : 0);
+        totalMonthly += fee;
+      }
+    });
+    
+    return { totalOneTime, totalMonthly };
+  }, [services]);
 
   const handleUpdateCustomText = (serviceId: string, text: string) => {
     setServices((prev) =>
@@ -366,6 +423,8 @@ export default function PropuestaEditar() {
             case_id: id!,
             service_id: s.service.id,
             custom_text: s.customText || null,
+            custom_fee: s.customFee || null,
+            custom_monthly_fee: s.customMonthlyFee || null,
             sort_order: index,
           }))
         );
@@ -561,6 +620,7 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                 services={services}
                 onToggleService={handleToggleService}
                 onUpdateCustomText={handleUpdateCustomText}
+                onUpdateServiceFee={handleUpdateServiceFee}
               />
 
               {/* Pricing */}
@@ -572,6 +632,8 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                 customRetainerMonths={customRetainerMonths}
                 paymentSplit={paymentSplit}
                 estimatedSavings={estimatedSavings}
+                servicesTotalOneTime={servicesTotals.totalOneTime}
+                servicesTotalMonthly={servicesTotals.totalMonthly}
                 onSelectTemplate={handleSelectTemplate}
                 onUpdatePricing={handleUpdatePricing}
               />

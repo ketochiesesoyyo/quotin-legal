@@ -24,6 +24,8 @@ export interface ServiceWithConfidence {
   confidence: number;
   isSelected: boolean;
   customText?: string;
+  customFee?: number;
+  customMonthlyFee?: number;
 }
 
 export interface ProposalEditorState {
