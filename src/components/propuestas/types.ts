@@ -10,6 +10,9 @@ export type CaseService = Tables<"case_services">;
 export type PricingTemplate = Tables<"pricing_templates">;
 export type CaseStatus = Enums<"case_status">;
 
+// Pricing mode for proposal fee calculation
+export type PricingMode = 'per_service' | 'summed' | 'global';
+
 export interface AIAnalysis {
   objective: string;
   risks: string[];
@@ -109,6 +112,9 @@ export interface ProposalPreviewData {
   
   // Selected services
   selectedServices: ServiceWithConfidence[];
+  
+  // Pricing mode
+  pricingMode: PricingMode;
   
   // Pricing details
   pricing: {

@@ -27,6 +27,7 @@ import type {
   ServiceWithConfidence,
   ProposalPreviewData,
   FirmSettings,
+  PricingMode,
 } from "@/components/propuestas/types";
 
 export default function PropuestaEditar() {
@@ -46,6 +47,7 @@ export default function PropuestaEditar() {
   const [customMonthlyRetainer, setCustomMonthlyRetainer] = useState(0);
   const [customRetainerMonths, setCustomRetainerMonths] = useState(12);
   const [paymentSplit, setPaymentSplit] = useState("50/50");
+  const [pricingMode, setPricingMode] = useState<PricingMode>('per_service');
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Fetch case data
@@ -206,6 +208,10 @@ export default function PropuestaEditar() {
       if (caseData.selected_pricing_id) {
         setSelectedPricingId(caseData.selected_pricing_id);
       }
+      // Set pricing mode from case data
+      if ((caseData as any).pricing_mode) {
+        setPricingMode((caseData as any).pricing_mode as PricingMode);
+      }
     }
   }, [caseData]);
 
@@ -316,6 +322,9 @@ export default function PropuestaEditar() {
   };
 
   const recalculatePricingFromServices = (servicesList: ServiceWithConfidence[]) => {
+    // Only recalculate if not in global mode
+    if (pricingMode === 'global') return;
+    
     const selectedServices = servicesList.filter((s) => s.isSelected);
     let totalOneTime = 0;
     let totalMonthly = 0;
@@ -337,6 +346,16 @@ export default function PropuestaEditar() {
       setCustomInitialPayment(totalOneTime);
       setCustomMonthlyRetainer(totalMonthly);
       setSelectedPricingId(null); // Clear template since using service-based pricing
+    }
+  };
+
+  // Handler for pricing mode change
+  const handlePricingModeChange = (mode: PricingMode) => {
+    setPricingMode(mode);
+    
+    // If switching to per_service or summed, recalculate from services
+    if (mode !== 'global') {
+      recalculatePricingFromServices(services);
     }
   };
 
@@ -379,6 +398,8 @@ export default function PropuestaEditar() {
       if (template.initial_payment_split) {
         setPaymentSplit(template.initial_payment_split);
       }
+      // Automatically switch to global mode when selecting template
+      setPricingMode('global');
     }
   };
 
@@ -392,6 +413,8 @@ export default function PropuestaEditar() {
     if (updates.monthlyRetainer !== undefined) setCustomMonthlyRetainer(updates.monthlyRetainer);
     if (updates.retainerMonths !== undefined) setCustomRetainerMonths(updates.retainerMonths);
     if (updates.paymentSplit !== undefined) setPaymentSplit(updates.paymentSplit);
+    // When manually updating pricing, switch to global mode
+    setPricingMode('global');
     setSelectedPricingId(null); // Clear template when customizing
   };
 
@@ -406,8 +429,9 @@ export default function PropuestaEditar() {
           custom_monthly_retainer: customMonthlyRetainer,
           custom_retainer_months: customRetainerMonths,
           selected_pricing_id: selectedPricingId,
+          pricing_mode: pricingMode,
           status: "borrador",
-        })
+        } as any)
         .eq("id", id!);
 
       if (caseError) throw caseError;
@@ -496,6 +520,7 @@ export default function PropuestaEditar() {
         unusedDeductions: null,
       },
       selectedServices: selectedServicesData,
+      pricingMode,
       pricing: {
         initialPayment: customInitialPayment,
         initialPaymentDescription: "estudio, análisis y propuesta de reestructura corporativa y fiscal",
@@ -520,7 +545,7 @@ export default function PropuestaEditar() {
           }
         : undefined,
     };
-  }, [client, entities, proposalBackground, services, customInitialPayment, customMonthlyRetainer, customRetainerMonths, paymentSplit, firmSettings, primaryContact]);
+  }, [client, entities, proposalBackground, services, customInitialPayment, customMonthlyRetainer, customRetainerMonths, paymentSplit, pricingMode, firmSettings, primaryContact]);
 
   // Validated data for display
   const validatedData = useMemo(() => ({
@@ -618,6 +643,8 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
               {/* Services */}
               <ServicesSection
                 services={services}
+                pricingMode={pricingMode}
+                onPricingModeChange={handlePricingModeChange}
                 onToggleService={handleToggleService}
                 onUpdateCustomText={handleUpdateCustomText}
                 onUpdateServiceFee={handleUpdateServiceFee}
@@ -634,6 +661,7 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                 estimatedSavings={estimatedSavings}
                 servicesTotalOneTime={servicesTotals.totalOneTime}
                 servicesTotalMonthly={servicesTotals.totalMonthly}
+                pricingMode={pricingMode}
                 onSelectTemplate={handleSelectTemplate}
                 onUpdatePricing={handleUpdatePricing}
               />

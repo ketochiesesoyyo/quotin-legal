@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, Check, ChevronDown, ChevronUp, Pencil, DollarSign } from "lucide-react";
+import { Sparkles, Check, ChevronDown, ChevronUp, Pencil, DollarSign, Calculator, ListOrdered, Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,10 +8,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import type { ServiceWithConfidence } from "./types";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import type { ServiceWithConfidence, PricingMode } from "./types";
 
 interface ServicesSectionProps {
   services: ServiceWithConfidence[];
+  pricingMode: PricingMode;
+  onPricingModeChange: (mode: PricingMode) => void;
   onToggleService: (serviceId: string) => void;
   onUpdateCustomText: (serviceId: string, text: string) => void;
   onUpdateServiceFee: (serviceId: string, fee: number, isMonthly: boolean) => void;
@@ -259,6 +262,8 @@ function ServiceCard({
 
 export function ServicesSection({
   services,
+  pricingMode,
+  onPricingModeChange,
   onToggleService,
   onUpdateCustomText,
   onUpdateServiceFee,
@@ -288,6 +293,17 @@ export function ServicesSection({
 
   const getLetter = (index: number) => String.fromCharCode(97 + index); // a, b, c, d...
 
+  const getPricingModeDescription = (mode: PricingMode) => {
+    switch (mode) {
+      case 'per_service':
+        return 'Cada servicio muestra su precio individual en la propuesta';
+      case 'summed':
+        return 'Solo se muestra el total de todos los servicios';
+      case 'global':
+        return 'Usar honorarios globales configurados manualmente';
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -302,26 +318,64 @@ export function ServicesSection({
           {selectedCount} servicio{selectedCount !== 1 ? "s" : ""} seleccionado{selectedCount !== 1 ? "s" : ""}
         </p>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {services.map((item, index) => (
-          <ServiceCard
-            key={item.service.id}
-            item={item}
-            index={getLetter(index)}
-            onToggle={() => onToggleService(item.service.id)}
-            onUpdateCustomText={(text) => onUpdateCustomText(item.service.id, text)}
-            onUpdateFee={(fee, isMonthly) => onUpdateServiceFee(item.service.id, fee, isMonthly)}
-          />
-        ))}
+      <CardContent className="space-y-4">
+        {/* Pricing Mode Selector */}
+        <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+          <Label className="text-sm font-medium">¿Cómo calcular honorarios?</Label>
+          <ToggleGroup
+            type="single"
+            value={pricingMode}
+            onValueChange={(value) => value && onPricingModeChange(value as PricingMode)}
+            className="justify-start flex-wrap gap-2"
+          >
+            <ToggleGroupItem
+              value="per_service"
+              className="flex items-center gap-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+            >
+              <ListOrdered className="h-4 w-4" />
+              Por servicio
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="summed"
+              className="flex items-center gap-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+            >
+              <Calculator className="h-4 w-4" />
+              Sumatoria total
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="global"
+              className="flex items-center gap-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+            >
+              <Wallet className="h-4 w-4" />
+              Global / Plantilla
+            </ToggleGroupItem>
+          </ToggleGroup>
+          <p className="text-xs text-muted-foreground">
+            {getPricingModeDescription(pricingMode)}
+          </p>
+        </div>
+        {/* Services list */}
+        <div className="space-y-3">
+          {services.map((item, index) => (
+            <ServiceCard
+              key={item.service.id}
+              item={item}
+              index={getLetter(index)}
+              onToggle={() => onToggleService(item.service.id)}
+              onUpdateCustomText={(text) => onUpdateCustomText(item.service.id, text)}
+              onUpdateFee={(fee, isMonthly) => onUpdateServiceFee(item.service.id, fee, isMonthly)}
+            />
+          ))}
 
-        {services.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            <p>No hay servicios disponibles</p>
-          </div>
-        )}
+          {services.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No hay servicios disponibles</p>
+            </div>
+          )}
+        </div>
 
-        {/* Totals summary */}
-        {selectedCount > 0 && (totalOneTime > 0 || totalMonthly > 0) && (
+        {/* Totals summary - only show when not using global mode */}
+        {pricingMode !== 'global' && selectedCount > 0 && (totalOneTime > 0 || totalMonthly > 0) && (
           <div className="mt-4 pt-4 border-t">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Total de servicios seleccionados:</span>
