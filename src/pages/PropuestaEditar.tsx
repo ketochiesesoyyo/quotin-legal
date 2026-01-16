@@ -49,6 +49,7 @@ export default function PropuestaEditar() {
   const [paymentSplit, setPaymentSplit] = useState("50/50");
   const [pricingMode, setPricingMode] = useState<PricingMode>('per_service');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
 
   // Fetch case data
   const { data: caseData, isLoading: loadingCase } = useQuery({
@@ -599,11 +600,48 @@ export default function PropuestaEditar() {
 
               {/* Background */}
               <BackgroundSection
+                caseId={id!}
                 userNotes={userNotes}
                 proposalBackground={proposalBackground}
                 aiSuggestion={aiSuggestion}
                 isAIProcessing={isAIProcessing}
+                isSaving={isSavingNotes}
                 onUpdateNotes={setUserNotes}
+                onSaveNotes={async (notes: string) => {
+                  setIsSavingNotes(true);
+                  try {
+                    // Update case notes
+                    const { error: caseError } = await supabase
+                      .from("cases")
+                      .update({ notes } as any)
+                      .eq("id", id!);
+                    
+                    if (caseError) throw caseError;
+                    
+                    // Save to notes history
+                    const { data: { user } } = await supabase.auth.getUser();
+                    const { error: historyError } = await supabase
+                      .from("case_notes_history")
+                      .insert({
+                        case_id: id!,
+                        notes,
+                        created_by: user?.id,
+                      } as any);
+                    
+                    if (historyError) throw historyError;
+                    
+                    toast({ title: "Notas guardadas", description: "Se ha creado una versión en el historial" });
+                    queryClient.invalidateQueries({ queryKey: ["case", id] });
+                  } catch (error: any) {
+                    toast({
+                      title: "Error al guardar notas",
+                      description: error.message,
+                      variant: "destructive",
+                    });
+                  } finally {
+                    setIsSavingNotes(false);
+                  }
+                }}
                 onUpdateProposalBackground={setProposalBackground}
                 onRequestAIAnalysis={async () => {
                   if (!userNotes.trim()) return;
