@@ -703,12 +703,6 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                   customMonthlyRetainer={customMonthlyRetainer}
                   customRetainerMonths={customRetainerMonths}
                   paymentSplit={paymentSplit}
-                  estimatedSavings={estimatedSavings}
-                  servicesTotalOneTime={servicesTotals.totalOneTime}
-                  servicesTotalMonthly={servicesTotals.totalMonthly}
-                  pricingMode={pricingMode}
-                  isConfigOpen={isPricingConfigOpen}
-                  onConfigOpenChange={setIsPricingConfigOpen}
                   onSelectTemplate={handleSelectTemplate}
                   onUpdatePricing={handleUpdatePricing}
                 />
