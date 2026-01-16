@@ -354,25 +354,27 @@ export function ServicesSection({
             {getPricingModeDescription(pricingMode)}
           </p>
         </div>
-        {/* Services list */}
-        <div className="space-y-3">
-          {services.map((item, index) => (
-            <ServiceCard
-              key={item.service.id}
-              item={item}
-              index={getLetter(index)}
-              onToggle={() => onToggleService(item.service.id)}
-              onUpdateCustomText={(text) => onUpdateCustomText(item.service.id, text)}
-              onUpdateFee={(fee, isMonthly) => onUpdateServiceFee(item.service.id, fee, isMonthly)}
-            />
-          ))}
+        {/* Services list - collapsible when in global mode */}
+        {pricingMode !== 'global' && (
+          <div className="space-y-3">
+            {services.map((item, index) => (
+              <ServiceCard
+                key={item.service.id}
+                item={item}
+                index={getLetter(index)}
+                onToggle={() => onToggleService(item.service.id)}
+                onUpdateCustomText={(text) => onUpdateCustomText(item.service.id, text)}
+                onUpdateFee={(fee, isMonthly) => onUpdateServiceFee(item.service.id, fee, isMonthly)}
+              />
+            ))}
 
-          {services.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>No hay servicios disponibles</p>
-            </div>
-          )}
-        </div>
+            {services.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No hay servicios disponibles</p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Totals summary - only show when not using global mode */}
         {pricingMode !== 'global' && selectedCount > 0 && (totalOneTime > 0 || totalMonthly > 0) && (

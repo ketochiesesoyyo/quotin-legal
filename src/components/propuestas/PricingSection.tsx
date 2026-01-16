@@ -29,6 +29,8 @@ interface PricingSectionProps {
   servicesTotalOneTime: number;
   servicesTotalMonthly: number;
   pricingMode: PricingMode;
+  isConfigOpen: boolean;
+  onConfigOpenChange: (open: boolean) => void;
   onSelectTemplate: (templateId: string) => void;
   onUpdatePricing: (updates: {
     initialPayment?: number;
@@ -49,10 +51,11 @@ export function PricingSection({
   servicesTotalOneTime,
   servicesTotalMonthly,
   pricingMode,
+  isConfigOpen,
+  onConfigOpenChange,
   onSelectTemplate,
   onUpdatePricing,
 }: PricingSectionProps) {
-  const [isConfigOpen, setIsConfigOpen] = useState(false);
 
   const totalCost =
     customInitialPayment + customMonthlyRetainer * customRetainerMonths;
@@ -86,10 +89,10 @@ export function PricingSection({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setIsConfigOpen(!isConfigOpen)}
+            onClick={() => onConfigOpenChange(!isConfigOpen)}
           >
             <Settings className="h-4 w-4 mr-1" />
-            Configurar
+            {isConfigOpen ? 'Cerrar' : 'Configurar'}
           </Button>
         </div>
       </CardHeader>
@@ -151,7 +154,7 @@ export function PricingSection({
         </div>
 
         {/* Configuration Panel */}
-        <Collapsible open={isConfigOpen} onOpenChange={setIsConfigOpen}>
+        <Collapsible open={isConfigOpen} onOpenChange={onConfigOpenChange}>
           <CollapsibleContent>
             <div className="border rounded-lg p-4 mt-4 space-y-4 bg-muted/30">
               {/* Template Selector */}

@@ -48,6 +48,7 @@ export default function PropuestaEditar() {
   const [customRetainerMonths, setCustomRetainerMonths] = useState(12);
   const [paymentSplit, setPaymentSplit] = useState("50/50");
   const [pricingMode, setPricingMode] = useState<PricingMode>('per_service');
+  const [isPricingConfigOpen, setIsPricingConfigOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
 
@@ -353,6 +354,11 @@ export default function PropuestaEditar() {
   // Handler for pricing mode change
   const handlePricingModeChange = (mode: PricingMode) => {
     setPricingMode(mode);
+    
+    // If switching to global, open the pricing config panel
+    if (mode === 'global') {
+      setIsPricingConfigOpen(true);
+    }
     
     // If switching to per_service or summed, recalculate from services
     if (mode !== 'global') {
@@ -700,6 +706,8 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                 servicesTotalOneTime={servicesTotals.totalOneTime}
                 servicesTotalMonthly={servicesTotals.totalMonthly}
                 pricingMode={pricingMode}
+                isConfigOpen={isPricingConfigOpen}
+                onConfigOpenChange={setIsPricingConfigOpen}
                 onSelectTemplate={handleSelectTemplate}
                 onUpdatePricing={handleUpdatePricing}
               />
