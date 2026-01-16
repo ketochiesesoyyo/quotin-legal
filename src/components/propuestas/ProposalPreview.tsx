@@ -231,7 +231,7 @@ export function ProposalPreview({
               </section>
 
               {/* ============ II. PROPUESTA DE HONORARIOS ============ */}
-              {data.pricing.totalAmount > 0 && (
+              {(data.pricing.totalAmount > 0 || data.selectedServices.length > 0) && (
                 <section className="mb-6">
                   <h2 className="text-base font-bold mb-4 text-primary">II. PROPUESTA DE HONORARIOS</h2>
 
