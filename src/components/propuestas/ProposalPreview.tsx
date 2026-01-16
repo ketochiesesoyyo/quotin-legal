@@ -67,8 +67,24 @@ export function ProposalPreview({
             <div className="prose prose-sm max-w-none dark:prose-invert">
               {/* Document Header */}
               <div className="text-center mb-8">
-                <h1 className="text-xl font-bold mb-2">PROPUESTA DE SERVICIOS LEGALES</h1>
-                <p className="text-muted-foreground">
+                {data.firmSettings?.logo_url && (
+                  <img 
+                    src={data.firmSettings.logo_url} 
+                    alt={data.firmSettings.name} 
+                    className="h-12 mx-auto mb-4 object-contain"
+                  />
+                )}
+                <h1 className="text-xl font-bold mb-2">
+                  {data.firmSettings?.name || "PROPUESTA DE SERVICIOS LEGALES"}
+                </h1>
+                {data.firmSettings && (
+                  <p className="text-xs text-muted-foreground">
+                    {[data.firmSettings.address, data.firmSettings.phone, data.firmSettings.email]
+                      .filter(Boolean)
+                      .join(" | ")}
+                  </p>
+                )}
+                <p className="text-muted-foreground mt-4">
                   Preparada para: <strong>{data.clientName}</strong>
                 </p>
               </div>
@@ -79,7 +95,7 @@ export function ProposalPreview({
               {data.background && (
                 <section className="mb-6">
                   <h2 className="text-base font-bold mb-3 text-primary">I. ANTECEDENTES</h2>
-                  <p className="text-sm leading-relaxed">{data.background}</p>
+                  <p className="text-sm leading-relaxed whitespace-pre-line">{data.background}</p>
                 </section>
               )}
 
@@ -97,7 +113,7 @@ export function ProposalPreview({
                           {String.fromCharCode(97 + index)}) {item.service.name}
                         </h3>
                         {(item.customText || item.service.standard_text) && (
-                          <p className="text-sm text-muted-foreground mt-1">
+                          <p className="text-sm text-muted-foreground mt-1 whitespace-pre-line">
                             {item.customText || item.service.standard_text}
                           </p>
                         )}
@@ -133,11 +149,42 @@ export function ProposalPreview({
                 </section>
               )}
 
+              {/* Garantías */}
+              {data.firmSettings?.guarantees_text && (
+                <section className="mb-6">
+                  <h2 className="text-base font-bold mb-3 text-primary">IV. GARANTÍAS DE SATISFACCIÓN</h2>
+                  <p className="text-sm leading-relaxed whitespace-pre-line">{data.firmSettings.guarantees_text}</p>
+                </section>
+              )}
+
+              {/* Avisos Legales / Disclaimers */}
+              {data.firmSettings?.disclaimers_text && (
+                <section className="mb-6">
+                  <h2 className="text-base font-bold mb-3 text-primary">V. AVISOS LEGALES</h2>
+                  <p className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground">{data.firmSettings.disclaimers_text}</p>
+                </section>
+              )}
+
+              {/* Texto de Cierre */}
+              {data.firmSettings?.closing_text && (
+                <section className="mb-6">
+                  <Separator className="my-6" />
+                  <p className="text-sm leading-relaxed whitespace-pre-line">{data.firmSettings.closing_text}</p>
+                </section>
+              )}
+
               {/* Footer */}
               <Separator className="my-6" />
-              <p className="text-xs text-center text-muted-foreground">
-                Esta propuesta tiene vigencia de 30 días a partir de su fecha de envío.
-              </p>
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground">
+                  Esta propuesta tiene vigencia de 30 días a partir de su fecha de envío.
+                </p>
+                {data.firmSettings?.website && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {data.firmSettings.website}
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </div>
