@@ -12,6 +12,7 @@ import ClienteNuevo from "./pages/ClienteNuevo";
 import ClienteDetalle from "./pages/ClienteDetalle";
 import ClienteEditar from "./pages/ClienteEditar";
 import Propuestas from "./pages/Propuestas";
+import PropuestaEditar from "./pages/PropuestaEditar";
 import Documentos from "./pages/Documentos";
 import Servicios from "./pages/Servicios";
 import Honorarios from "./pages/Honorarios";
@@ -36,6 +37,20 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <AppLayout>{children}</AppLayout>;
 }
 
+function ProtectedRouteNoLayout({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Cargando...</div>;
+  }
+
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  return <>{children}</>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -50,6 +65,7 @@ const App = () => (
           <Route path="/clientes/:id" element={<ProtectedRoute><ClienteDetalle /></ProtectedRoute>} />
           <Route path="/clientes/:id/editar" element={<ProtectedRoute><ClienteEditar /></ProtectedRoute>} />
           <Route path="/propuestas" element={<ProtectedRoute><Propuestas /></ProtectedRoute>} />
+          <Route path="/propuestas/:id/editar" element={<ProtectedRouteNoLayout><PropuestaEditar /></ProtectedRouteNoLayout>} />
           <Route path="/documentos" element={<ProtectedRoute><Documentos /></ProtectedRoute>} />
           <Route path="/servicios" element={<ProtectedRoute><Servicios /></ProtectedRoute>} />
           <Route path="/honorarios" element={<ProtectedRoute><Honorarios /></ProtectedRoute>} />
