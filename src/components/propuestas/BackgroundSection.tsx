@@ -238,34 +238,6 @@ export function BackgroundSection({
         </Card>
       )}
 
-      {/* Sección 3: Antecedentes actuales en la propuesta */}
-      {hasProposalBackground && (
-        <Card className="border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Check className="h-4 w-4 text-green-600" />
-                <CardTitle className="text-base font-semibold text-green-900 dark:text-green-100">
-                  ANTECEDENTES EN LA PROPUESTA
-                </CardTitle>
-                <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
-                  Insertado
-                </Badge>
-              </div>
-            </div>
-            <p className="text-xs text-green-700 dark:text-green-300 mt-1">
-              Este texto aparecerá en la sección "I. ANTECEDENTES" de la propuesta final
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border border-green-100 dark:border-green-900">
-              <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
-                {proposalBackground}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
