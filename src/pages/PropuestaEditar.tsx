@@ -12,11 +12,14 @@ import { ServicesSection } from "@/components/propuestas/ServicesSection";
 import { PricingSection } from "@/components/propuestas/PricingSection";
 import { ProposalPreview } from "@/components/propuestas/ProposalPreview";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import type {
   Case,
   Client,
   ClientEntity,
   ClientDocument,
+  ClientContact,
   Service,
   CaseService,
   PricingTemplate,
@@ -158,6 +161,22 @@ export default function PropuestaEditar() {
       if (error) throw error;
       return data as FirmSettings | null;
     },
+  });
+
+  // Fetch primary contact
+  const { data: primaryContact } = useQuery({
+    queryKey: ["primary_contact", caseData?.client_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("client_contacts")
+        .select("*")
+        .eq("client_id", caseData!.client_id)
+        .eq("is_primary", true)
+        .maybeSingle();
+      if (error) throw error;
+      return data as ClientContact | null;
+    },
+    enabled: !!caseData?.client_id,
   });
 
   // Initialize state from case data
@@ -356,15 +375,31 @@ export default function PropuestaEditar() {
 
   // Build preview data
   const previewData: ProposalPreviewData = useMemo(() => {
-    const selectedServices = services.filter((s) => s.isSelected);
+    const selectedServicesData = services.filter((s) => s.isSelected);
     const totalCost = customInitialPayment + customMonthlyRetainer * customRetainerMonths;
     const estimatedSavings = totalCost * 2.4; // Placeholder ROI calculation
 
+    // Format date in Spanish
+    const documentDate = format(new Date(), "d 'de' MMMM 'de' yyyy", { locale: es });
+
     return {
+      documentDate,
+      primaryContact: primaryContact
+        ? {
+            fullName: primaryContact.full_name,
+            position: primaryContact.position,
+          }
+        : null,
       clientName: client?.group_name || "Cliente",
+      groupAlias: client?.alias || client?.group_name || "",
+      industry: client?.industry || "",
       entityCount: entities.length,
       annualRevenue: client?.annual_revenue || "No especificado",
       employeeCount: client?.employee_count || 0,
+      entities: entities.map((e) => ({
+        legalName: e.legal_name,
+        rfc: e.rfc,
+      })),
       background,
       validatedData: {
         rfc: entities[0]?.rfc || null,
@@ -372,27 +407,32 @@ export default function PropuestaEditar() {
         declaredIncome: null,
         unusedDeductions: null,
       },
-      selectedServices,
+      selectedServices: selectedServicesData,
       pricing: {
-        baseAmount: totalCost,
-        paymentScheme: customRetainerMonths > 0 && customMonthlyRetainer > 0
-          ? `${paymentSplit} + ${customRetainerMonths} mensualidades`
-          : paymentSplit,
+        initialPayment: customInitialPayment,
+        initialPaymentDescription: "estudio, análisis y propuesta de reestructura corporativa y fiscal",
+        paymentSplit,
+        monthlyRetainer: customMonthlyRetainer,
+        retainerMonths: customRetainerMonths,
+        exclusionsText: null,
+        totalAmount: totalCost,
         roi: totalCost > 0 ? `${(estimatedSavings / totalCost).toFixed(1)}x` : "",
       },
-      firmSettings: firmSettings ? {
-        name: firmSettings.name,
-        logo_url: firmSettings.logo_url,
-        address: firmSettings.address,
-        phone: firmSettings.phone,
-        email: firmSettings.email,
-        website: firmSettings.website,
-        guarantees_text: firmSettings.guarantees_text,
-        disclaimers_text: firmSettings.disclaimers_text,
-        closing_text: firmSettings.closing_text,
-      } : undefined,
+      firmSettings: firmSettings
+        ? {
+            name: firmSettings.name,
+            logo_url: firmSettings.logo_url,
+            address: firmSettings.address,
+            phone: firmSettings.phone,
+            email: firmSettings.email,
+            website: firmSettings.website,
+            guarantees_text: firmSettings.guarantees_text,
+            disclaimers_text: firmSettings.disclaimers_text,
+            closing_text: firmSettings.closing_text,
+          }
+        : undefined,
     };
-  }, [client, entities, background, services, customInitialPayment, customMonthlyRetainer, customRetainerMonths, paymentSplit, firmSettings]);
+  }, [client, entities, background, services, customInitialPayment, customMonthlyRetainer, customRetainerMonths, paymentSplit, firmSettings, primaryContact]);
 
   // Validated data for display
   const validatedData = useMemo(() => ({
