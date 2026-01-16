@@ -24,7 +24,14 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Briefcase, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Plus, Briefcase, MoreHorizontal, Pencil, Trash2, DollarSign } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,6 +50,9 @@ export default function Servicios() {
     description: "",
     standard_text: "",
     is_active: true,
+    fee_type: "one_time" as "one_time" | "monthly" | "both",
+    suggested_fee: "",
+    suggested_monthly_fee: "",
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -68,6 +78,9 @@ export default function Servicios() {
           description: data.description || null,
           standard_text: data.standard_text || null,
           is_active: data.is_active,
+          fee_type: data.fee_type,
+          suggested_fee: data.suggested_fee ? parseFloat(data.suggested_fee) : null,
+          suggested_monthly_fee: data.suggested_monthly_fee ? parseFloat(data.suggested_monthly_fee) : null,
         })
         .select()
         .single();
@@ -94,6 +107,9 @@ export default function Servicios() {
           description: data.description || null,
           standard_text: data.standard_text || null,
           is_active: data.is_active,
+          fee_type: data.fee_type,
+          suggested_fee: data.suggested_fee ? parseFloat(data.suggested_fee) : null,
+          suggested_monthly_fee: data.suggested_monthly_fee ? parseFloat(data.suggested_monthly_fee) : null,
         })
         .eq("id", id);
       if (error) throw error;
@@ -125,7 +141,15 @@ export default function Servicios() {
   });
 
   const resetForm = () => {
-    setFormData({ name: "", description: "", standard_text: "", is_active: true });
+    setFormData({ 
+      name: "", 
+      description: "", 
+      standard_text: "", 
+      is_active: true,
+      fee_type: "one_time",
+      suggested_fee: "",
+      suggested_monthly_fee: "",
+    });
   };
 
   const handleEdit = (service: Service) => {
@@ -135,6 +159,9 @@ export default function Servicios() {
       description: service.description || "",
       standard_text: service.standard_text || "",
       is_active: service.is_active ?? true,
+      fee_type: (service.fee_type as "one_time" | "monthly" | "both") || "one_time",
+      suggested_fee: service.suggested_fee?.toString() || "",
+      suggested_monthly_fee: service.suggested_monthly_fee?.toString() || "",
     });
     setIsOpen(true);
   };
@@ -204,6 +231,70 @@ export default function Servicios() {
                   placeholder="Este texto se insertará automáticamente en las propuestas..."
                 />
               </div>
+              
+              {/* Pricing Section */}
+              <div className="border-t pt-4 space-y-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <DollarSign className="h-4 w-4" />
+                  Honorarios Sugeridos
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="fee_type">Tipo de Cobro</Label>
+                  <Select
+                    value={formData.fee_type}
+                    onValueChange={(value: "one_time" | "monthly" | "both") => 
+                      setFormData({ ...formData, fee_type: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="one_time">Pago único</SelectItem>
+                      <SelectItem value="monthly">Iguala mensual</SelectItem>
+                      <SelectItem value="both">Ambos (pago inicial + iguala)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {(formData.fee_type === "one_time" || formData.fee_type === "both") && (
+                  <div className="space-y-2">
+                    <Label htmlFor="suggested_fee">
+                      {formData.fee_type === "both" ? "Pago Inicial Sugerido" : "Honorario Sugerido"}
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input
+                        id="suggested_fee"
+                        type="number"
+                        className="pl-7"
+                        value={formData.suggested_fee}
+                        onChange={(e) => setFormData({ ...formData, suggested_fee: e.target.value })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {(formData.fee_type === "monthly" || formData.fee_type === "both") && (
+                  <div className="space-y-2">
+                    <Label htmlFor="suggested_monthly_fee">Iguala Mensual Sugerida</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input
+                        id="suggested_monthly_fee"
+                        type="number"
+                        className="pl-7"
+                        value={formData.suggested_monthly_fee}
+                        onChange={(e) => setFormData({ ...formData, suggested_monthly_fee: e.target.value })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="flex items-center space-x-2">
                 <Switch
                   id="is_active"
@@ -263,46 +354,80 @@ export default function Servicios() {
                 <TableRow>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Descripción</TableHead>
+                  <TableHead>Tipo de Cobro</TableHead>
+                  <TableHead className="text-right">Honorarios</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {services?.map((service) => (
-                  <TableRow key={service.id}>
-                    <TableCell className="font-medium">{service.name}</TableCell>
-                    <TableCell className="max-w-[300px] truncate">
-                      {service.description || "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={service.is_active ? "default" : "secondary"}>
-                        {service.is_active ? "Activo" : "Inactivo"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEdit(service)}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => deleteMutation.mutate(service.id)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Eliminar
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {services?.map((service) => {
+                  const formatCurrency = (amount: number | null) => 
+                    amount ? new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(amount) : null;
+                  
+                  const getFeeTypeLabel = (type: string | null) => {
+                    switch (type) {
+                      case "monthly": return "Iguala";
+                      case "both": return "Mixto";
+                      default: return "Único";
+                    }
+                  };
+
+                  const getPricingDisplay = () => {
+                    const parts: string[] = [];
+                    if (service.suggested_fee) {
+                      parts.push(formatCurrency(service.suggested_fee) || "");
+                    }
+                    if (service.suggested_monthly_fee) {
+                      parts.push(`${formatCurrency(service.suggested_monthly_fee)}/mes`);
+                    }
+                    return parts.length > 0 ? parts.join(" + ") : "-";
+                  };
+
+                  return (
+                    <TableRow key={service.id}>
+                      <TableCell className="font-medium">{service.name}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">
+                        {service.description || "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          {getFeeTypeLabel(service.fee_type)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm">
+                        {getPricingDisplay()}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={service.is_active ? "default" : "secondary"}>
+                          {service.is_active ? "Activo" : "Inactivo"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEdit(service)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => deleteMutation.mutate(service.id)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Eliminar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
