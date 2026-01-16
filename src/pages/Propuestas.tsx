@@ -19,13 +19,49 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, FileText, Clock, CheckCircle, XCircle, Brain, Loader2, AlertCircle, Target, AlertTriangle, Lightbulb, HelpCircle } from "lucide-react";
+import { 
+  Plus, 
+  FileText, 
+  CheckCircle, 
+  XCircle, 
+  Brain, 
+  Loader2, 
+  AlertCircle, 
+  Target, 
+  AlertTriangle, 
+  Lightbulb, 
+  HelpCircle,
+  MoreHorizontal,
+  Eye,
+  Pencil,
+  ArrowRightLeft,
+  Trash2,
+  Send,
+  FileEdit
+} from "lucide-react";
 import type { Tables, Enums } from "@/integrations/supabase/types";
 
 type Case = Tables<"cases">;
 type Client = Tables<"clients">;
+type Profile = Tables<"profiles">;
+type CaseService = Tables<"case_services">;
 type CaseStatus = Enums<"case_status">;
 
 interface AIAnalysis {
@@ -37,17 +73,43 @@ interface AIAnalysis {
   nextStatus: string;
 }
 
-const STATUS_CONFIG: Record<CaseStatus, { label: string; color: string }> = {
-  nuevo: { label: "Nuevo", color: "bg-blue-100 text-blue-800" },
-  docs_solicitados: { label: "Docs Solicitados", color: "bg-yellow-100 text-yellow-800" },
-  docs_recibidos: { label: "Docs Recibidos", color: "bg-orange-100 text-orange-800" },
-  en_analisis: { label: "En Análisis", color: "bg-purple-100 text-purple-800" },
-  borrador: { label: "Borrador", color: "bg-indigo-100 text-indigo-800" },
-  revision: { label: "Revisión", color: "bg-pink-100 text-pink-800" },
-  enviada: { label: "Enviada", color: "bg-cyan-100 text-cyan-800" },
-  negociacion: { label: "Negociación", color: "bg-amber-100 text-amber-800" },
-  ganada: { label: "Ganada", color: "bg-green-100 text-green-800" },
-  perdida: { label: "Perdida", color: "bg-red-100 text-red-800" },
+// Simplified status for the new design
+type ProposalStatus = "draft" | "enviada" | "aceptada" | "rechazada";
+
+const PROPOSAL_STATUS_CONFIG: Record<ProposalStatus, { label: string; color: string; icon: React.ReactNode }> = {
+  draft: { label: "Borrador", color: "bg-muted text-muted-foreground", icon: <FileEdit className="h-4 w-4" /> },
+  enviada: { label: "Enviada", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400", icon: <Send className="h-4 w-4" /> },
+  aceptada: { label: "Aceptada", color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400", icon: <CheckCircle className="h-4 w-4" /> },
+  rechazada: { label: "Rechazada", color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400", icon: <XCircle className="h-4 w-4" /> },
+};
+
+// Map case_status to our simplified proposal status
+const mapCaseStatusToProposalStatus = (status: CaseStatus): ProposalStatus => {
+  switch (status) {
+    case "ganada":
+      return "aceptada";
+    case "perdida":
+      return "rechazada";
+    case "enviada":
+    case "negociacion":
+      return "enviada";
+    default:
+      return "draft";
+  }
+};
+
+// Map proposal status back to case_status for updates
+const mapProposalStatusToCaseStatus = (status: ProposalStatus): CaseStatus => {
+  switch (status) {
+    case "aceptada":
+      return "ganada";
+    case "rechazada":
+      return "perdida";
+    case "enviada":
+      return "enviada";
+    default:
+      return "borrador";
+  }
 };
 
 const NEED_TYPES = [
@@ -64,6 +126,8 @@ const NEED_TYPES = [
 export default function Propuestas() {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedCase, setSelectedCase] = useState<(Case & { ai_analysis?: AIAnalysis }) | null>(null);
+  const [viewProposalCase, setViewProposalCase] = useState<Case | null>(null);
+  const [statusChangeCase, setStatusChangeCase] = useState<Case | null>(null);
   const [formData, setFormData] = useState({
     client_id: "",
     need_type: "",
@@ -72,6 +136,7 @@ export default function Propuestas() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Fetch cases with related data
   const { data: cases, isLoading } = useQuery({
     queryKey: ["cases"],
     queryFn: async () => {
@@ -90,6 +155,24 @@ export default function Propuestas() {
       const { data, error } = await supabase.from("clients").select("*");
       if (error) throw error;
       return data as Client[];
+    },
+  });
+
+  const { data: profiles } = useQuery({
+    queryKey: ["profiles"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("*");
+      if (error) throw error;
+      return data as Profile[];
+    },
+  });
+
+  const { data: caseServices } = useQuery({
+    queryKey: ["case_services"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("case_services").select("*");
+      if (error) throw error;
+      return data as CaseService[];
     },
   });
 
@@ -168,6 +251,7 @@ export default function Propuestas() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cases"] });
       toast({ title: "Estado actualizado" });
+      setStatusChangeCase(null);
     },
     onError: (error) => {
       toast({ title: "Error al actualizar estado", description: error.message, variant: "destructive" });
@@ -191,31 +275,53 @@ export default function Propuestas() {
     return clients?.find((c) => c.id === clientId)?.group_name || "Sin cliente";
   };
 
-  const getCasesByStatus = (status: CaseStatus) => {
-    return cases?.filter((c) => c.status === status) || [];
+  const getAssignedUserName = (userId: string | null) => {
+    if (!userId) return "Sin asignar";
+    const profile = profiles?.find((p) => p.user_id === userId);
+    return profile?.full_name || "Usuario";
   };
 
-  const activeStatuses: CaseStatus[] = ["nuevo", "docs_solicitados", "docs_recibidos", "en_analisis", "borrador", "revision", "enviada", "negociacion"];
+  const getServicesCount = (caseId: string) => {
+    return caseServices?.filter((cs) => cs.case_id === caseId).length || 0;
+  };
 
-  const getAIStatusIcon = (aiStatus?: string) => {
-    switch (aiStatus) {
-      case "analyzing":
-        return <Loader2 className="h-3 w-3 animate-spin text-blue-500" />;
-      case "completed":
-        return <Brain className="h-3 w-3 text-green-500" />;
-      case "error":
-        return <AlertCircle className="h-3 w-3 text-red-500" />;
-      default:
-        return <Clock className="h-3 w-3 text-gray-400" />;
-    }
+  const calculateTotalCost = (caseItem: Case) => {
+    const initialPayment = caseItem.custom_initial_payment || 0;
+    const monthlyRetainer = caseItem.custom_monthly_retainer || 0;
+    const retainerMonths = caseItem.custom_retainer_months || 0;
+    const total = Number(initialPayment) + (Number(monthlyRetainer) * Number(retainerMonths));
+    return total;
+  };
+
+  const formatCurrency = (amount: number) => {
+    if (amount === 0) return "Por definir";
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  // KPI calculations
+  const getProposalsByStatus = (status: ProposalStatus) => {
+    return cases?.filter((c) => mapCaseStatusToProposalStatus(c.status) === status) || [];
+  };
+
+  const kpiData = {
+    aceptadas: getProposalsByStatus("aceptada").length,
+    enviadas: getProposalsByStatus("enviada").length,
+    rechazadas: getProposalsByStatus("rechazada").length,
+    drafts: getProposalsByStatus("draft").length,
   };
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Propuestas</h1>
-          <p className="text-muted-foreground">Pipeline de casos y propuestas con análisis inteligente</p>
+          <p className="text-muted-foreground">Gestión de propuestas comerciales</p>
         </div>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
@@ -335,214 +441,340 @@ export default function Propuestas() {
         </Dialog>
       </div>
 
+      {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">En Proceso</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Aceptadas</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {cases?.filter((c) => !["ganada", "perdida"].includes(c.status)).length || 0}
-            </div>
+            <div className="text-2xl font-bold text-green-600">{kpiData.aceptadas}</div>
+            <p className="text-xs text-muted-foreground">Propuestas ganadas</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">En Negociación</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Enviadas</CardTitle>
+            <Send className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{getCasesByStatus("negociacion").length}</div>
+            <div className="text-2xl font-bold text-blue-600">{kpiData.enviadas}</div>
+            <p className="text-xs text-muted-foreground">En espera de respuesta</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Ganadas</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Rechazadas</CardTitle>
+            <XCircle className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{getCasesByStatus("ganada").length}</div>
+            <div className="text-2xl font-bold text-red-600">{kpiData.rechazadas}</div>
+            <p className="text-xs text-muted-foreground">Propuestas perdidas</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Perdidas</CardTitle>
-            <XCircle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Borradores</CardTitle>
+            <FileEdit className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{getCasesByStatus("perdida").length}</div>
+            <div className="text-2xl font-bold">{kpiData.drafts}</div>
+            <p className="text-xs text-muted-foreground">En proceso de elaboración</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* AI Analysis Detail Modal */}
-      <Dialog open={!!selectedCase} onOpenChange={(open) => !open && setSelectedCase(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      {/* Proposals Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Todas las Propuestas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : cases && cases.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Propuesta</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Tipo de Necesidad</TableHead>
+                  <TableHead className="text-center">Servicios</TableHead>
+                  <TableHead className="text-right">Costo Total</TableHead>
+                  <TableHead>Estatus</TableHead>
+                  <TableHead>Responsable</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {cases.map((caseItem) => {
+                  const proposalStatus = mapCaseStatusToProposalStatus(caseItem.status);
+                  const statusConfig = PROPOSAL_STATUS_CONFIG[proposalStatus];
+                  const isDraft = proposalStatus === "draft";
+                  
+                  return (
+                    <TableRow key={caseItem.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          {caseItem.title}
+                        </div>
+                      </TableCell>
+                      <TableCell>{getClientName(caseItem.client_id)}</TableCell>
+                      <TableCell>
+                        {caseItem.need_type ? (
+                          <Badge variant="outline">{caseItem.need_type}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">Sin definir</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="secondary">{getServicesCount(caseItem.id)}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatCurrency(calculateTotalCost(caseItem))}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={statusConfig.color}>
+                          <span className="flex items-center gap-1">
+                            {statusConfig.icon}
+                            {statusConfig.label}
+                          </span>
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">{getAssignedUserName(caseItem.assigned_to)}</span>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {isDraft && (
+                              <DropdownMenuItem onClick={() => {
+                                // TODO: Navigate to edit proposal
+                                toast({ title: "Editar propuesta", description: "Funcionalidad próximamente" });
+                              }}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Editar Propuesta
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem onClick={() => setStatusChangeCase(caseItem)}>
+                              <ArrowRightLeft className="mr-2 h-4 w-4" />
+                              Cambiar Estatus
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setViewProposalCase(caseItem)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Ver Propuesta
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              disabled
+                              className="text-muted-foreground"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Eliminar Propuesta
+                              {/* TODO: Implementar eliminación con confirmación */}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center py-12">
+              <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+              <h3 className="text-lg font-medium mb-2">No hay propuestas</h3>
+              <p className="text-muted-foreground mb-4">Crea tu primera propuesta para comenzar</p>
+              <Button onClick={() => setIsOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nueva Propuesta
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* View Proposal Modal */}
+      <Dialog open={!!viewProposalCase} onOpenChange={(open) => !open && setViewProposalCase(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedCase?.title}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              {viewProposalCase?.title}
+            </DialogTitle>
           </DialogHeader>
-          {selectedCase?.ai_analysis ? (
-            <div className="space-y-4">
-              <div className="bg-muted/50 rounded-lg p-4">
-                <h4 className="font-medium flex items-center gap-2 mb-2">
-                  <Target className="h-4 w-4 text-green-500" />
-                  Objetivo del Cliente
-                </h4>
-                <p className="text-sm">{selectedCase.ai_analysis.objective}</p>
-              </div>
-
-              <div className="bg-muted/50 rounded-lg p-4">
-                <h4 className="font-medium flex items-center gap-2 mb-2">
-                  <FileText className="h-4 w-4 text-blue-500" />
-                  Resumen
-                </h4>
-                <p className="text-sm">{selectedCase.ai_analysis.summary}</p>
-              </div>
-
-              {selectedCase.ai_analysis.risks.length > 0 && (
-                <div className="bg-amber-50 dark:bg-amber-950/20 rounded-lg p-4">
-                  <h4 className="font-medium flex items-center gap-2 mb-2">
-                    <AlertTriangle className="h-4 w-4 text-amber-500" />
-                    Riesgos Identificados
-                  </h4>
-                  <ul className="text-sm space-y-1">
-                    {selectedCase.ai_analysis.risks.map((risk, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <span className="text-amber-500">•</span> {risk}
-                      </li>
-                    ))}
-                  </ul>
+          {viewProposalCase && (
+            <div className="space-y-6">
+              {/* Basic Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Cliente</Label>
+                  <p className="font-medium">{getClientName(viewProposalCase.client_id)}</p>
                 </div>
-              )}
+                <div>
+                  <Label className="text-muted-foreground text-xs">Tipo de Necesidad</Label>
+                  <p className="font-medium">{viewProposalCase.need_type || "Sin definir"}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Estatus</Label>
+                  <Badge className={PROPOSAL_STATUS_CONFIG[mapCaseStatusToProposalStatus(viewProposalCase.status)].color}>
+                    {PROPOSAL_STATUS_CONFIG[mapCaseStatusToProposalStatus(viewProposalCase.status)].label}
+                  </Badge>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Costo Total</Label>
+                  <p className="font-medium">{formatCurrency(calculateTotalCost(viewProposalCase))}</p>
+                </div>
+              </div>
 
-              {selectedCase.ai_analysis.suggestedServices.length > 0 && (
-                <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-4">
-                  <h4 className="font-medium flex items-center gap-2 mb-2">
-                    <Lightbulb className="h-4 w-4 text-blue-500" />
-                    Servicios Sugeridos
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedCase.ai_analysis.suggestedServices.map((service, i) => (
-                      <Badge key={i} variant="secondary">{service}</Badge>
-                    ))}
+              {/* Notes */}
+              {viewProposalCase.notes && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Notas de la Conversación</Label>
+                  <div className="mt-2 p-4 bg-muted/50 rounded-lg">
+                    <p className="text-sm whitespace-pre-wrap">{viewProposalCase.notes}</p>
                   </div>
                 </div>
               )}
 
-              {selectedCase.ai_analysis.missingInfo.length > 0 && (
-                <div className="bg-purple-50 dark:bg-purple-950/20 rounded-lg p-4">
-                  <h4 className="font-medium flex items-center gap-2 mb-2">
-                    <HelpCircle className="h-4 w-4 text-purple-500" />
-                    Información Faltante
+              {/* AI Analysis */}
+              {(viewProposalCase as Case & { ai_analysis?: AIAnalysis }).ai_analysis && (
+                <div className="space-y-4">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Brain className="h-4 w-4 text-primary" />
+                    Análisis de IA
                   </h4>
-                  <ul className="text-sm space-y-1">
-                    {selectedCase.ai_analysis.missingInfo.map((info, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <span className="text-purple-500">•</span> {info}
-                      </li>
-                    ))}
-                  </ul>
+                  
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <h5 className="font-medium flex items-center gap-2 mb-2 text-sm">
+                      <Target className="h-4 w-4 text-green-500" />
+                      Objetivo del Cliente
+                    </h5>
+                    <p className="text-sm">{(viewProposalCase as Case & { ai_analysis: AIAnalysis }).ai_analysis.objective}</p>
+                  </div>
+
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <h5 className="font-medium flex items-center gap-2 mb-2 text-sm">
+                      <FileText className="h-4 w-4 text-blue-500" />
+                      Resumen
+                    </h5>
+                    <p className="text-sm">{(viewProposalCase as Case & { ai_analysis: AIAnalysis }).ai_analysis.summary}</p>
+                  </div>
+
+                  {(viewProposalCase as Case & { ai_analysis: AIAnalysis }).ai_analysis.risks.length > 0 && (
+                    <div className="bg-amber-50 dark:bg-amber-950/20 rounded-lg p-4">
+                      <h5 className="font-medium flex items-center gap-2 mb-2 text-sm">
+                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                        Riesgos Identificados
+                      </h5>
+                      <ul className="text-sm space-y-1">
+                        {(viewProposalCase as Case & { ai_analysis: AIAnalysis }).ai_analysis.risks.map((risk, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <span className="text-amber-500">•</span> {risk}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {(viewProposalCase as Case & { ai_analysis: AIAnalysis }).ai_analysis.suggestedServices.length > 0 && (
+                    <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-4">
+                      <h5 className="font-medium flex items-center gap-2 mb-2 text-sm">
+                        <Lightbulb className="h-4 w-4 text-blue-500" />
+                        Servicios Sugeridos
+                      </h5>
+                      <div className="flex flex-wrap gap-2">
+                        {(viewProposalCase as Case & { ai_analysis: AIAnalysis }).ai_analysis.suggestedServices.map((service, i) => (
+                          <Badge key={i} variant="secondary">{service}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {(viewProposalCase as Case & { ai_analysis: AIAnalysis }).ai_analysis.missingInfo.length > 0 && (
+                    <div className="bg-purple-50 dark:bg-purple-950/20 rounded-lg p-4">
+                      <h5 className="font-medium flex items-center gap-2 mb-2 text-sm">
+                        <HelpCircle className="h-4 w-4 text-purple-500" />
+                        Información Faltante
+                      </h5>
+                      <ul className="text-sm space-y-1">
+                        {(viewProposalCase as Case & { ai_analysis: AIAnalysis }).ai_analysis.missingInfo.map((info, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <span className="text-purple-500">•</span> {info}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
 
-              <div className="pt-2">
-                <p className="text-xs text-muted-foreground">
-                  Nota: La IA solo sugiere, las decisiones finales son del equipo legal.
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Brain className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No hay análisis de IA disponible para esta propuesta.</p>
-              <Button 
-                variant="outline" 
-                className="mt-4"
-                onClick={() => {
-                  if (selectedCase) {
-                    analyzeProposal(selectedCase.id);
-                    setSelectedCase(null);
-                  }
-                }}
-              >
-                <Brain className="mr-2 h-4 w-4" />
-                Ejecutar Análisis
-              </Button>
+              {/* Proposal Content (if generated) */}
+              {viewProposalCase.proposal_content && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Contenido de la Propuesta</Label>
+                  <div className="mt-2 p-4 bg-muted/50 rounded-lg">
+                    <pre className="text-sm whitespace-pre-wrap font-sans">
+                      {JSON.stringify(viewProposalCase.proposal_content, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
       </Dialog>
 
-      {isLoading ? (
-        <p className="text-muted-foreground">Cargando...</p>
-      ) : (
-        <div className="grid gap-4 lg:grid-cols-4 overflow-x-auto">
-          {activeStatuses.map((status) => (
-            <Card key={status} className="min-w-[280px]">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center justify-between">
-                  {STATUS_CONFIG[status].label}
-                  <Badge variant="secondary" className="ml-2">
-                    {getCasesByStatus(status).length}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {getCasesByStatus(status).length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">Sin propuestas</p>
-                ) : (
-                  getCasesByStatus(status).map((caseItem) => (
-                    <Card 
-                      key={caseItem.id} 
-                      className="p-3 cursor-pointer hover:shadow-md transition-shadow"
-                      onClick={() => setSelectedCase(caseItem as Case & { ai_analysis?: AIAnalysis })}
+      {/* Change Status Modal */}
+      <Dialog open={!!statusChangeCase} onOpenChange={(open) => !open && setStatusChangeCase(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cambiar Estatus</DialogTitle>
+          </DialogHeader>
+          {statusChangeCase && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Cambia el estatus de: <strong>{statusChangeCase.title}</strong>
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {(Object.keys(PROPOSAL_STATUS_CONFIG) as ProposalStatus[]).map((status) => {
+                  const config = PROPOSAL_STATUS_CONFIG[status];
+                  const isCurrentStatus = mapCaseStatusToProposalStatus(statusChangeCase.status) === status;
+                  
+                  return (
+                    <Button
+                      key={status}
+                      variant={isCurrentStatus ? "default" : "outline"}
+                      className="justify-start"
+                      onClick={() => {
+                        updateStatusMutation.mutate({
+                          id: statusChangeCase.id,
+                          status: mapProposalStatusToCaseStatus(status),
+                        });
+                      }}
+                      disabled={updateStatusMutation.isPending}
                     >
-                      <div className="flex items-start justify-between">
-                        <h4 className="font-medium text-sm flex-1">{caseItem.title}</h4>
-                        {getAIStatusIcon((caseItem as any).ai_status)}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {getClientName(caseItem.client_id)}
-                      </p>
-                      {caseItem.need_type && (
-                        <Badge variant="outline" className="mt-2 text-xs">
-                          {caseItem.need_type}
-                        </Badge>
-                      )}
-                      {(caseItem as any).ai_analysis && (
-                        <div className="mt-2 flex items-center gap-1 text-xs text-green-600">
-                          <Brain className="h-3 w-3" />
-                          <span>Análisis disponible</span>
-                        </div>
-                      )}
-                      <div className="mt-3" onClick={(e) => e.stopPropagation()}>
-                        <Select
-                          value={caseItem.status}
-                          onValueChange={(value) =>
-                            updateStatusMutation.mutate({ id: caseItem.id, status: value as CaseStatus })
-                          }
-                        >
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Object.entries(STATUS_CONFIG).map(([key, config]) => (
-                              <SelectItem key={key} value={key}>
-                                {config.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </Card>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+                      {config.icon}
+                      <span className="ml-2">{config.label}</span>
+                      {isCurrentStatus && <span className="ml-auto text-xs">(actual)</span>}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
