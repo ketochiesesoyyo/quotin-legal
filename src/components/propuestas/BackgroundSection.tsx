@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface BackgroundSectionProps {
+  /** ID del caso para guardar notas */
+  caseId: string;
   /** Notas crudas del usuario (apuntes de la reunión) */
   userNotes: string;
   /** Antecedentes finales que van en la propuesta */
@@ -14,8 +16,12 @@ interface BackgroundSectionProps {
   aiSuggestion?: string;
   /** Indica si la IA está procesando */
   isAIProcessing?: boolean;
+  /** Indica si se está guardando */
+  isSaving?: boolean;
   /** Callback cuando el usuario actualiza sus notas */
   onUpdateNotes: (notes: string) => void;
+  /** Callback para guardar notas en la base de datos */
+  onSaveNotes: (notes: string) => Promise<void>;
   /** Callback cuando el usuario acepta/edita los antecedentes de la propuesta */
   onUpdateProposalBackground: (text: string) => void;
   /** Callback para solicitar análisis de IA */
@@ -23,11 +29,14 @@ interface BackgroundSectionProps {
 }
 
 export function BackgroundSection({
+  caseId,
   userNotes,
   proposalBackground,
   aiSuggestion,
   isAIProcessing = false,
+  isSaving = false,
   onUpdateNotes,
+  onSaveNotes,
   onUpdateProposalBackground,
   onRequestAIAnalysis,
 }: BackgroundSectionProps) {
@@ -41,7 +50,8 @@ export function BackgroundSection({
     setEditedAISuggestion(aiSuggestion);
   }
 
-  const handleSaveNotes = () => {
+  const handleSaveNotes = async () => {
+    await onSaveNotes(editedNotes);
     onUpdateNotes(editedNotes);
     setIsEditingNotes(false);
   };
@@ -111,13 +121,13 @@ export function BackgroundSection({
                   {isAIProcessing ? "Analizando..." : "Generar con IA"}
                 </Button>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={handleCancelNotes}>
+                  <Button variant="outline" size="sm" onClick={handleCancelNotes} disabled={isSaving}>
                     <X className="h-4 w-4 mr-1" />
                     Cancelar
                   </Button>
-                  <Button size="sm" onClick={handleSaveNotes}>
+                  <Button size="sm" onClick={handleSaveNotes} disabled={isSaving}>
                     <Check className="h-4 w-4 mr-1" />
-                    Guardar
+                    {isSaving ? "Guardando..." : "Guardar"}
                   </Button>
                 </div>
               </div>
