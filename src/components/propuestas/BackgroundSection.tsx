@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Check, Pencil, Sparkles, X, Lightbulb, ArrowRight, FileText } from "lucide-react";
+import { Check, Pencil, Sparkles, X, Lightbulb, ArrowRight, FileText, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 interface BackgroundSectionProps {
   /** ID del caso para guardar notas */
   caseId: string;
@@ -42,6 +42,7 @@ export function BackgroundSection({
 }: BackgroundSectionProps) {
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [isEditingAI, setIsEditingAI] = useState(false);
+  const [isAICardOpen, setIsAICardOpen] = useState(true);
   const [editedNotes, setEditedNotes] = useState(userNotes);
   const [editedAISuggestion, setEditedAISuggestion] = useState(aiSuggestion || "");
 
@@ -155,97 +156,108 @@ export function BackgroundSection({
 
       {/* Sección 2: Sugerencia de IA */}
       {(hasAISuggestion || isAIProcessing) && (
-        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="h-6 w-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                  <Lightbulb className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+        <Collapsible open={isAICardOpen} onOpenChange={setIsAICardOpen}>
+          <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                    <Lightbulb className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <CardTitle className="text-base font-semibold text-blue-900 dark:text-blue-100">
+                    ANTECEDENTES PROPUESTOS POR IA
+                  </CardTitle>
+                  <Badge variant="secondary" className="text-xs gap-1">
+                    <Sparkles className="h-3 w-3" />
+                    Generado
+                  </Badge>
                 </div>
-                <CardTitle className="text-base font-semibold text-blue-900 dark:text-blue-100">
-                  ANTECEDENTES PROPUESTOS POR IA
-                </CardTitle>
-                <Badge variant="secondary" className="text-xs gap-1">
-                  <Sparkles className="h-3 w-3" />
-                  Generado
-                </Badge>
-              </div>
-              {!isEditingAI && hasAISuggestion && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setIsEditingAI(true)}
-                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-100"
-                >
-                  <Pencil className="h-4 w-4 mr-1" />
-                  Editar
-                </Button>
-              )}
-            </div>
-            <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-              Revisa y edita el texto antes de insertarlo en la propuesta
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {isAIProcessing ? (
-              <div className="flex items-center gap-3 py-4">
-                <div className="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full" />
-                <p className="text-sm text-blue-700 dark:text-blue-300">
-                  Analizando tus notas y generando antecedentes profesionales...
-                </p>
-              </div>
-            ) : isEditingAI ? (
-              <div className="space-y-3">
-                <Textarea
-                  value={editedAISuggestion}
-                  onChange={(e) => setEditedAISuggestion(e.target.value)}
-                  rows={10}
-                  className="resize-none bg-white dark:bg-gray-900"
-                />
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" size="sm" onClick={handleCancelAISuggestion}>
-                    <X className="h-4 w-4 mr-1" />
-                    Cancelar
-                  </Button>
-                  <Button size="sm" onClick={handleSaveAISuggestion}>
-                    <Check className="h-4 w-4 mr-1" />
-                    Guardar cambios
-                  </Button>
+                <div className="flex items-center gap-1">
+                  {!isEditingAI && hasAISuggestion && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setIsEditingAI(true)}
+                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                    >
+                      <Pencil className="h-4 w-4 mr-1" />
+                      Editar
+                    </Button>
+                  )}
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100">
+                      <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isAICardOpen ? '' : '-rotate-90'}`} />
+                    </Button>
+                  </CollapsibleTrigger>
                 </div>
               </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border border-blue-100 dark:border-blue-900">
-                  <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
-                    {editedAISuggestion}
-                  </p>
-                </div>
-                
-                <div className="flex items-center justify-between pt-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={onRequestAIAnalysis}
-                    disabled={isAIProcessing}
-                    className="text-blue-600 border-blue-300 hover:bg-blue-50"
-                  >
-                    <Sparkles className="h-4 w-4 mr-1" />
-                    Regenerar
-                  </Button>
-                  
-                  <Button 
-                    size="sm" 
-                    onClick={handleInsertInProposal}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    <ArrowRight className="h-4 w-4 mr-1" />
-                    Insertar en propuesta
-                  </Button>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                Revisa y edita el texto antes de insertarlo en la propuesta
+              </p>
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent className="space-y-4">
+                {isAIProcessing ? (
+                  <div className="flex items-center gap-3 py-4">
+                    <div className="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full" />
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      Analizando tus notas y generando antecedentes profesionales...
+                    </p>
+                  </div>
+                ) : isEditingAI ? (
+                  <div className="space-y-3">
+                    <Textarea
+                      value={editedAISuggestion}
+                      onChange={(e) => setEditedAISuggestion(e.target.value)}
+                      rows={10}
+                      className="resize-none bg-white dark:bg-gray-900"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" size="sm" onClick={handleCancelAISuggestion}>
+                        <X className="h-4 w-4 mr-1" />
+                        Cancelar
+                      </Button>
+                      <Button size="sm" onClick={handleSaveAISuggestion}>
+                        <Check className="h-4 w-4 mr-1" />
+                        Guardar cambios
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border border-blue-100 dark:border-blue-900">
+                      <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+                        {editedAISuggestion}
+                      </p>
+                    </div>
+                    
+                    <div className="flex items-center justify-between pt-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={onRequestAIAnalysis}
+                        disabled={isAIProcessing}
+                        className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                      >
+                        <Sparkles className="h-4 w-4 mr-1" />
+                        Regenerar
+                      </Button>
+                      
+                      <Button 
+                        size="sm" 
+                        onClick={handleInsertInProposal}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        <ArrowRight className="h-4 w-4 mr-1" />
+                        Insertar en propuesta
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
       )}
 
     </div>
