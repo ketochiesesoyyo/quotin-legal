@@ -271,11 +271,37 @@ export default function PropuestaEditar() {
 
   // Handlers
   const handleToggleService = (serviceId: string) => {
-    setServices((prev) =>
-      prev.map((s) =>
+    setServices((prev) => {
+      const updated = prev.map((s) =>
         s.service.id === serviceId ? { ...s, isSelected: !s.isSelected } : s
-      )
-    );
+      );
+      
+      // Recalculate pricing based on selected services
+      const selectedServices = updated.filter((s) => s.isSelected);
+      let totalOneTime = 0;
+      let totalMonthly = 0;
+      
+      selectedServices.forEach((s) => {
+        const fee = s.service.suggested_fee;
+        const monthlyFee = s.service.suggested_monthly_fee;
+        
+        if (fee && typeof fee === 'number') {
+          totalOneTime += fee;
+        }
+        if (monthlyFee && typeof monthlyFee === 'number') {
+          totalMonthly += monthlyFee;
+        }
+      });
+      
+      // Only update if we have suggested fees (don't override if manually set)
+      if (totalOneTime > 0 || totalMonthly > 0) {
+        setCustomInitialPayment(totalOneTime);
+        setCustomMonthlyRetainer(totalMonthly);
+        setSelectedPricingId(null); // Clear template since using service-based pricing
+      }
+      
+      return updated;
+    });
   };
 
   const handleUpdateCustomText = (serviceId: string, text: string) => {
