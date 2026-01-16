@@ -501,7 +501,19 @@ export default function PropuestaEditar() {
                   try {
                     // Simulate AI processing - in production this would call the edge function
                     await new Promise((resolve) => setTimeout(resolve, 2000));
-                    const generatedBackground = `Derivado de la información que amablemente nos ha sido proporcionada, sabemos que ${client?.alias || client?.group_name || "la empresa"} se dedica principalmente a ${client?.industry || "sus actividades comerciales"}. Asimismo, sabemos que actualmente operan con ${entities.length} razones sociales, así como una plantilla laboral de aproximadamente ${client?.employee_count || "varios"} colaboradores, sumado a los activos tangibles e intangibles propios de su operación.\n\n${userNotes}`;
+                    
+                    // Generate professional background text (this would come from AI in production)
+                    const clientName = client?.alias || client?.group_name || "la Empresa";
+                    const industry = client?.industry || "sus actividades comerciales";
+                    const entityCount = entities.length;
+                    const employeeCount = client?.employee_count || 0;
+                    
+                    const generatedBackground = `Derivado de la información que amablemente nos ha sido proporcionada, sabemos que ${clientName} se dedica principalmente a ${industry}. Asimismo, sabemos que actualmente operan con ${entityCount} razón${entityCount !== 1 ? 'es' : ''} social${entityCount !== 1 ? 'es' : ''}, así como una plantilla laboral de aproximadamente ${employeeCount} colaboradores, sumado a los activos tangibles e intangibles propios de su operación.
+
+Finalmente, sabemos que gracias al crecimiento sostenido que han tenido, las Empresas requieren la implementación de servicios especializados que permitan optimizar su estructura corporativa y fiscal, blindar patrimonialmente a los socios, y aprovechar al máximo los activos con que cuenta la organización.
+
+Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en la medida de lo posible y con total apego a derecho, los recursos económicos, humanos y materiales con que cuentan, así como implementar una estructura corporativa sólida de cara a las proyecciones de crecimiento que se tienen.`;
+                    
                     setAiSuggestion(generatedBackground);
                   } catch (error) {
                     toast({
