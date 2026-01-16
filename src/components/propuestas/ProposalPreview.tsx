@@ -238,37 +238,62 @@ export function ProposalPreview({
                   <p className="text-sm leading-relaxed mb-4">{FIXED_TEXTS.introHonorarios}</p>
 
                   <div className="space-y-4 mb-4">
-                    {/* Service-by-service breakdown - only in per_service mode */}
-                    {data.pricingMode === 'per_service' && data.selectedServices.length > 0 && (
-                      <div className="space-y-2">
+                    {/* Services with description - always shown */}
+                    {data.selectedServices.length > 0 && (
+                      <div className="space-y-4">
                         {data.selectedServices.map((item, index) => {
-                          const feeType = item.service.fee_type || 'one_time';
-                          const showOneTime = feeType === 'one_time' || feeType === 'both';
-                          const showMonthly = feeType === 'monthly' || feeType === 'both';
-                          const fee = item.customFee ?? (item.service.suggested_fee ? Number(item.service.suggested_fee) : 0);
-                          const monthlyFee = item.customMonthlyFee ?? (item.service.suggested_monthly_fee ? Number(item.service.suggested_monthly_fee) : 0);
+                          const serviceText = item.customText || item.service.standard_text || item.service.description;
                           
-                          // Only show if there's a fee to display
-                          if ((!showOneTime || fee === 0) && (!showMonthly || monthlyFee === 0)) {
-                            return null;
+                          // For per_service mode, also show pricing
+                          if (data.pricingMode === 'per_service') {
+                            const feeType = item.service.fee_type || 'one_time';
+                            const showOneTime = feeType === 'one_time' || feeType === 'both';
+                            const showMonthly = feeType === 'monthly' || feeType === 'both';
+                            const fee = item.customFee ?? (item.service.suggested_fee ? Number(item.service.suggested_fee) : 0);
+                            const monthlyFee = item.customMonthlyFee ?? (item.service.suggested_monthly_fee ? Number(item.service.suggested_monthly_fee) : 0);
+                            const hasFee = (showOneTime && fee > 0) || (showMonthly && monthlyFee > 0);
+
+                            return (
+                              <div key={item.service.id} className="pl-4">
+                                <p className="text-sm mb-1">
+                                  <strong>{String.fromCharCode(97 + index)}) {item.service.name}:</strong>
+                                </p>
+                                {serviceText && (
+                                  <p className="text-sm mb-2 ml-4 text-muted-foreground">
+                                    {serviceText}
+                                  </p>
+                                )}
+                                {hasFee && (
+                                  <p className="text-sm ml-4">
+                                    <strong>Honorarios:</strong>{" "}
+                                    {showOneTime && fee > 0 && (
+                                      <>
+                                        Un pago de <strong>{formatCurrency(fee)}</strong> más IVA
+                                        {showMonthly && monthlyFee > 0 ? ", más " : "."}
+                                      </>
+                                    )}
+                                    {showMonthly && monthlyFee > 0 && (
+                                      <>
+                                        una iguala mensual de <strong>{formatCurrency(monthlyFee)}</strong> más IVA.
+                                      </>
+                                    )}
+                                  </p>
+                                )}
+                              </div>
+                            );
                           }
 
+                          // For summed and global modes, show only service name and description (no price breakdown)
                           return (
                             <div key={item.service.id} className="pl-4">
-                              <p className="text-sm">
-                                <strong>{String.fromCharCode(97 + index)}) {item.service.name}:</strong>{" "}
-                                {showOneTime && fee > 0 && (
-                                  <>
-                                    Un pago de <strong>{formatCurrency(fee)}</strong> más IVA
-                                    {showMonthly && monthlyFee > 0 ? ", más " : "."}
-                                  </>
-                                )}
-                                {showMonthly && monthlyFee > 0 && (
-                                  <>
-                                    una iguala mensual de <strong>{formatCurrency(monthlyFee)}</strong> más IVA.
-                                  </>
-                                )}
+                              <p className="text-sm mb-1">
+                                <strong>{String.fromCharCode(97 + index)}) {item.service.name}:</strong>
                               </p>
+                              {serviceText && (
+                                <p className="text-sm ml-4 text-muted-foreground">
+                                  {serviceText}
+                                </p>
+                              )}
                             </div>
                           );
                         })}
