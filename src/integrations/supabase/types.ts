@@ -373,6 +373,59 @@ export type Database = {
           },
         ]
       }
+      client_documents: {
+        Row: {
+          created_at: string | null
+          document_type: string
+          entity_id: string
+          file_name: string | null
+          file_url: string | null
+          id: string
+          notes: string | null
+          status: string | null
+          updated_at: string | null
+          uploaded_at: string | null
+          validated_at: string | null
+          validated_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          document_type: string
+          entity_id: string
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          notes?: string | null
+          status?: string | null
+          updated_at?: string | null
+          uploaded_at?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          document_type?: string
+          entity_id?: string
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          notes?: string | null
+          status?: string | null
+          updated_at?: string | null
+          uploaded_at?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_documents_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "client_entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_entities: {
         Row: {
           client_id: string
@@ -408,29 +461,41 @@ export type Database = {
       clients: {
         Row: {
           alias: string | null
+          annual_revenue: string | null
           created_at: string
           created_by: string | null
+          employee_count: number | null
           group_name: string
           id: string
+          industry: string | null
           notes: string | null
+          status: string | null
           updated_at: string
         }
         Insert: {
           alias?: string | null
+          annual_revenue?: string | null
           created_at?: string
           created_by?: string | null
+          employee_count?: number | null
           group_name: string
           id?: string
+          industry?: string | null
           notes?: string | null
+          status?: string | null
           updated_at?: string
         }
         Update: {
           alias?: string | null
+          annual_revenue?: string | null
           created_at?: string
           created_by?: string | null
+          employee_count?: number | null
           group_name?: string
           id?: string
+          industry?: string | null
           notes?: string | null
+          status?: string | null
           updated_at?: string
         }
         Relationships: []
