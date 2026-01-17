@@ -277,13 +277,27 @@ export function ProposalPreview({
                       </div>
                     )}
 
-                    {/* Transition text - use generated or fallback */}
-                    <p className="text-sm leading-relaxed mb-4">
-                      {data.generatedContent?.transitionText || FIXED_TEXTS.transicion}
-                    </p>
-
-                    {/* Participation intro */}
-                    <p className="text-sm leading-relaxed mb-4">{FIXED_TEXTS.introParticipacion}</p>
+                    {/* Transition text - only show if generated */}
+                    {hasGeneratedContent ? (
+                      <>
+                        <p className="text-sm leading-relaxed mb-4">
+                          {data.generatedContent?.transitionText}
+                        </p>
+                        {/* Closing text from AI */}
+                        {data.generatedContent?.closingText && (
+                          <p className="text-sm leading-relaxed mb-4">
+                            {data.generatedContent.closingText}
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <div className="my-6 p-4 border-2 border-dashed border-muted-foreground/30 rounded-lg text-center">
+                        <Sparkles className="h-6 w-6 mx-auto mb-2 text-muted-foreground/50" />
+                        <p className="text-sm text-muted-foreground">
+                          Haz clic en <strong>"Generar contenido con IA"</strong> en la sección de servicios para crear el texto personalizado de la propuesta.
+                        </p>
+                      </div>
+                    )}
                   </>
                 )}
               </section>
