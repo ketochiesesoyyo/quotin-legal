@@ -6,10 +6,11 @@ import TextAlign from '@tiptap/extension-text-align';
 import { BlockMarkerToolbar } from './BlockMarkerToolbar';
 import type { TemplateBlock, BlockType } from './types';
 import { useState, useCallback, useEffect } from 'react';
-import { Lock, Variable, X } from 'lucide-react';
+import { Lock, Variable, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -25,6 +26,7 @@ interface MarkedBlock {
   content: string;
   variableName?: string;
   source?: string;
+  instructions?: string;
   startPos: number;
   endPos: number;
 }
@@ -50,6 +52,9 @@ export function TemplateEditor({
     variableName: string;
     source: string;
   }>({ variableName: '', source: '' });
+  const [dynamicConfig, setDynamicConfig] = useState<{
+    instructions: string;
+  }>({ instructions: '' });
 
   const editor = useEditor({
     extensions: [
@@ -61,7 +66,7 @@ export function TemplateEditor({
         },
       }),
       Placeholder.configure({
-        placeholder: 'Escribe el contenido de tu plantilla aquí...\n\nSelecciona texto y usa los botones "Fijo" o "Variable" para marcar bloques.',
+        placeholder: 'Escribe el contenido de tu plantilla aquí...\n\nSelecciona texto y usa los botones "Fijo", "Variable" o "Dinámico" para marcar bloques.',
       }),
       TextAlign.configure({
         types: ['heading', 'paragraph'],
@@ -85,6 +90,7 @@ export function TemplateEditor({
       order: index,
       variableName: block.variableName,
       source: block.source,
+      instructions: block.instructions,
       required: block.type === 'variable',
       format: 'richtext' as const,
     }));
@@ -149,6 +155,34 @@ export function TemplateEditor({
     setVariableConfig({ variableName: '', source: '' });
   }, [editor, generateBlockId]);
 
+  const handleMarkAsDynamic = useCallback(() => {
+    if (!editor) return;
+
+    const { from, to } = editor.state.selection;
+    const selectedText = editor.state.doc.textBetween(from, to);
+
+    if (!selectedText.trim()) return;
+
+    const newBlock: MarkedBlock = {
+      id: generateBlockId(),
+      type: 'dynamic',
+      content: selectedText,
+      startPos: from,
+      endPos: to,
+    };
+
+    // Apply highlight
+    editor
+      .chain()
+      .focus()
+      .setHighlight({ color: '#f3e8ff' }) // Light purple for dynamic
+      .run();
+
+    setMarkedBlocks(prev => [...prev, newBlock]);
+    setSelectedBlockId(newBlock.id);
+    setDynamicConfig({ instructions: '' });
+  }, [editor, generateBlockId]);
+
   const handleUpdateVariableConfig = useCallback((blockId: string) => {
     setMarkedBlocks(prev =>
       prev.map(block =>
@@ -165,6 +199,21 @@ export function TemplateEditor({
     setVariableConfig({ variableName: '', source: '' });
   }, [variableConfig]);
 
+  const handleUpdateDynamicConfig = useCallback((blockId: string) => {
+    setMarkedBlocks(prev =>
+      prev.map(block =>
+        block.id === blockId
+          ? {
+              ...block,
+              instructions: dynamicConfig.instructions,
+            }
+          : block
+      )
+    );
+    setSelectedBlockId(null);
+    setDynamicConfig({ instructions: '' });
+  }, [dynamicConfig]);
+
   const handleRemoveBlock = useCallback((blockId: string) => {
     setMarkedBlocks(prev => prev.filter(b => b.id !== blockId));
     if (selectedBlockId === blockId) {
@@ -180,6 +229,7 @@ export function TemplateEditor({
         editor={editor}
         onMarkAsStatic={handleMarkAsStatic}
         onMarkAsVariable={handleMarkAsVariable}
+        onMarkAsDynamic={handleMarkAsDynamic}
       />
 
       {/* Marked blocks summary */}
@@ -193,6 +243,8 @@ export function TemplateEditor({
                 className={`flex items-center gap-1 px-2 py-1 rounded text-xs cursor-pointer transition-all ${
                   block.type === 'static'
                     ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                    : block.type === 'dynamic'
+                    ? 'bg-purple-100 text-purple-800 border border-purple-300'
                     : 'bg-amber-100 text-amber-800 border border-amber-300'
                 } ${selectedBlockId === block.id ? 'ring-2 ring-primary' : ''}`}
                 onClick={() => {
@@ -202,11 +254,18 @@ export function TemplateEditor({
                       variableName: block.variableName || '',
                       source: block.source || '',
                     });
+                  } else if (block.type === 'dynamic') {
+                    setSelectedBlockId(block.id);
+                    setDynamicConfig({
+                      instructions: block.instructions || '',
+                    });
                   }
                 }}
               >
                 {block.type === 'static' ? (
                   <Lock className="h-3 w-3" />
+                ) : block.type === 'dynamic' ? (
+                  <Sparkles className="h-3 w-3" />
                 ) : (
                   <Variable className="h-3 w-3" />
                 )}
@@ -216,6 +275,11 @@ export function TemplateEditor({
                 {block.type === 'variable' && block.variableName && (
                   <span className="text-muted-foreground">
                     ({block.variableName})
+                  </span>
+                )}
+                {block.type === 'dynamic' && block.instructions && (
+                  <span className="text-purple-600">
+                    ✓
                   </span>
                 )}
                 <Button
@@ -300,6 +364,55 @@ export function TemplateEditor({
         </div>
       )}
 
+      {/* Dynamic configuration panel */}
+      {selectedBlock && selectedBlock.type === 'dynamic' && (
+        <div className="border-b p-4 bg-purple-50/50">
+          <div className="text-sm font-medium mb-3 flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-purple-600" />
+            Configurar Bloque Dinámico (IA)
+          </div>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="instructions">Instrucciones para la IA</Label>
+              <Textarea
+                id="instructions"
+                value={dynamicConfig.instructions}
+                onChange={(e) =>
+                  setDynamicConfig((prev) => ({
+                    ...prev,
+                    instructions: e.target.value,
+                  }))
+                }
+                placeholder="Ej: Redacta los antecedentes del caso basándote en la información del cliente, su industria y los servicios solicitados. Incluye contexto sobre necesidades específicas y situación actual."
+                className="min-h-[100px]"
+              />
+              <p className="text-xs text-muted-foreground">
+                La IA usará estas instrucciones junto con el contexto del caso (cliente, servicios, notas) para generar contenido personalizado al compilar la propuesta.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedBlockId(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => handleUpdateDynamicConfig(selectedBlock.id)}
+              disabled={!dynamicConfig.instructions.trim()}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              Guardar instrucciones
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Editor content */}
       <div className="p-4 min-h-[400px] prose prose-sm max-w-none">
         <EditorContent editor={editor} className="outline-none" />
@@ -315,6 +428,11 @@ export function TemplateEditor({
         .template-highlight[data-color="#fef3c7"] {
           background-color: #fef3c7;
           border-left: 3px solid #f59e0b;
+          padding: 2px 4px;
+        }
+        .template-highlight[data-color="#f3e8ff"] {
+          background-color: #f3e8ff;
+          border-left: 3px solid #a855f7;
           padding: 2px 4px;
         }
         .ProseMirror {
