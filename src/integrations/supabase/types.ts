@@ -813,6 +813,7 @@ export type Database = {
         | "negociacion"
         | "ganada"
         | "perdida"
+        | "archivada"
       document_status: "pendiente" | "recibido" | "validado" | "rechazado"
       level_indicator: "baja" | "media" | "alta"
       scope_level:
@@ -959,6 +960,7 @@ export const Constants = {
         "negociacion",
         "ganada",
         "perdida",
+        "archivada",
       ],
       document_status: ["pendiente", "recibido", "validado", "rechazado"],
       level_indicator: ["baja", "media", "alta"],
