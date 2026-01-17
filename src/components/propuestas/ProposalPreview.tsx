@@ -135,14 +135,15 @@ export function ProposalPreview({
                 <p className="text-sm">Ciudad de México, a {data.documentDate}</p>
               </div>
 
-              {/* ============ DESTINATARIO ============ */}
+{/* ============ DESTINATARIO ============ */}
               <div className="mb-6">
-                {data.primaryContact && (
-                  <p className="font-semibold text-sm uppercase">
-                    {getSalutationPrefix(data.primaryContact.fullName)} {data.primaryContact.fullName}
-                  </p>
+                <p className="font-semibold text-sm uppercase">
+                  {data.primaryContact?.salutationPrefix || 'Sr.'} {data.primaryContact?.fullName || "[Nombre del Contacto]"}
+                </p>
+                {data.primaryContact?.position && (
+                  <p className="text-sm text-muted-foreground">{data.primaryContact.position}</p>
                 )}
-                {data.entities.length > 0 && (
+                {data.entities.length > 0 ? (
                   <div className="mt-1">
                     {data.entities.map((entity, idx) => (
                       <p key={idx} className="text-sm">
@@ -150,29 +151,29 @@ export function ProposalPreview({
                       </p>
                     ))}
                   </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground mt-1">[Razón Social]</p>
                 )}
                 <p className="font-semibold mt-2 text-sm">PRESENTE</p>
               </div>
 
               {/* ============ SALUDO ============ */}
-              {data.primaryContact && (
-                <div className="mb-6">
-                  <p className="text-sm mb-4">
-                    <strong>Estimado {getSalutationPrefix(data.primaryContact.fullName)} {getLastName(data.primaryContact.fullName)}:</strong>
-                  </p>
-                  <p className="text-sm leading-relaxed">
-                    {FIXED_TEXTS.introSaludo(
-                      firmName,
-                      "el análisis y planeación corporativo-fiscal requerido"
-                    )}{" "}
-                    {data.groupAlias && (
-                      <>
-                        (en adelante indistintamente como "<strong>{data.groupAlias}</strong>" o "las Empresas").
-                      </>
-                    )}
-                  </p>
-                </div>
-              )}
+              <div className="mb-6">
+                <p className="text-sm mb-4">
+                  <strong>Estimado {data.primaryContact?.salutationPrefix || 'Sr.'} {getLastName(data.primaryContact?.fullName || "Apellido")}:</strong>
+                </p>
+                <p className="text-sm leading-relaxed">
+                  {FIXED_TEXTS.introSaludo(
+                    firmName,
+                    "el análisis y planeación corporativo-fiscal requerido"
+                  )}{" "}
+                  {data.groupAlias && (
+                    <>
+                      (en adelante indistintamente como "<strong>{data.groupAlias}</strong>" o "las Empresas").
+                    </>
+                  )}
+                </p>
+              </div>
 
               {/* ============ I. ANTECEDENTES Y ALCANCE DE LOS SERVICIOS ============ */}
               <section className="mb-6">

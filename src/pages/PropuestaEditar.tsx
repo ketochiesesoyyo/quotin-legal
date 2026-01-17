@@ -12,6 +12,7 @@ import { PricingModeSelector } from "@/components/propuestas/PricingModeSelector
 import { ServicesSection } from "@/components/propuestas/ServicesSection";
 import { PricingSection } from "@/components/propuestas/PricingSection";
 import { ProposalPreview } from "@/components/propuestas/ProposalPreview";
+import { RecipientSection, type RecipientData } from "@/components/propuestas/RecipientSection";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -52,6 +53,13 @@ export default function PropuestaEditar() {
   const [isPricingConfigOpen, setIsPricingConfigOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [recipientData, setRecipientData] = useState<RecipientData>({
+    fullName: "[Nombre del Contacto]",
+    position: null,
+    salutationPrefix: 'Sr.',
+    isCustom: false,
+    contactId: null,
+  });
 
   // Fetch case data
   const { data: caseData, isLoading: loadingCase } = useQuery({
@@ -185,6 +193,21 @@ export default function PropuestaEditar() {
     enabled: !!caseData?.client_id,
   });
 
+  // Fetch all client contacts for recipient selector
+  const { data: allContacts = [] } = useQuery({
+    queryKey: ["client_contacts", caseData?.client_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("client_contacts")
+        .select("*")
+        .eq("client_id", caseData!.client_id)
+        .order("is_primary", { ascending: false });
+      if (error) throw error;
+      return data as ClientContact[];
+    },
+    enabled: !!caseData?.client_id,
+  });
+
   // Initialize state from case data
   useEffect(() => {
     if (caseData) {
@@ -217,6 +240,23 @@ export default function PropuestaEditar() {
       }
     }
   }, [caseData]);
+
+  // Initialize recipient from primary contact
+  useEffect(() => {
+    if (primaryContact) {
+      const firstName = primaryContact.full_name.split(" ")[0].toLowerCase();
+      const femaleNames = ["maria", "ana", "carmen", "laura", "patricia", "martha", "rosa", "guadalupe", "elena", "adriana", "claudia", "gabriela", "monica", "veronica", "alejandra", "sandra", "lucia", "fernanda", "diana", "paola"];
+      const prefix: 'Sr.' | 'Sra.' = femaleNames.some((n) => firstName.includes(n)) ? "Sra." : "Sr.";
+      
+      setRecipientData({
+        fullName: primaryContact.full_name,
+        position: primaryContact.position,
+        salutationPrefix: prefix,
+        isCustom: false,
+        contactId: primaryContact.id,
+      });
+    }
+  }, [primaryContact]);
 
   // Initialize services with AI suggestions
   useEffect(() => {
@@ -504,12 +544,11 @@ export default function PropuestaEditar() {
 
     return {
       documentDate,
-      primaryContact: primaryContact
-        ? {
-            fullName: primaryContact.full_name,
-            position: primaryContact.position,
-          }
-        : null,
+      primaryContact: {
+        fullName: recipientData.fullName,
+        position: recipientData.position,
+        salutationPrefix: recipientData.salutationPrefix,
+      },
       clientName: client?.group_name || "Cliente",
       groupAlias: client?.alias || client?.group_name || "",
       industry: client?.industry || "",
@@ -553,7 +592,7 @@ export default function PropuestaEditar() {
           }
         : undefined,
     };
-  }, [client, entities, proposalBackground, services, customInitialPayment, customMonthlyRetainer, customRetainerMonths, paymentSplit, pricingMode, firmSettings, primaryContact]);
+  }, [client, entities, proposalBackground, services, customInitialPayment, customMonthlyRetainer, customRetainerMonths, paymentSplit, pricingMode, firmSettings, recipientData]);
 
   // Validated data for display
   const validatedData = useMemo(() => ({
@@ -680,6 +719,13 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                     setIsAIProcessing(false);
                   }
                 }}
+              />
+
+              {/* Recipient Section - who the proposal is addressed to */}
+              <RecipientSection
+                availableContacts={allContacts}
+                recipient={recipientData}
+                onUpdateRecipient={setRecipientData}
               />
 
               {/* Validated Data */}
