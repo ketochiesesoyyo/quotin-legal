@@ -38,7 +38,6 @@ export function BlockMarkerToolbar({
               variant="outline"
               size="sm"
               onClick={onMarkAsStatic}
-              disabled={!hasSelection}
               className="gap-1"
             >
               <Lock className="h-4 w-4" />
@@ -57,7 +56,6 @@ export function BlockMarkerToolbar({
               variant="outline"
               size="sm"
               onClick={onMarkAsVariable}
-              disabled={!hasSelection}
               className="gap-1"
             >
               <Variable className="h-4 w-4" />
@@ -76,7 +74,6 @@ export function BlockMarkerToolbar({
               variant="outline"
               size="sm"
               onClick={onMarkAsDynamic}
-              disabled={!hasSelection}
               className="gap-1 border-purple-300 text-purple-700 hover:bg-purple-50"
             >
               <Sparkles className="h-4 w-4" />
@@ -95,7 +92,6 @@ export function BlockMarkerToolbar({
               variant="outline"
               size="sm"
               onClick={onRemoveMark}
-              disabled={!hasSelection || !hasHighlight}
               className="gap-1 border-red-300 text-red-700 hover:bg-red-50"
             >
               <Eraser className="h-4 w-4" />
