@@ -283,28 +283,48 @@ export default function PlantillaEditar() {
     toast({ title: "Análisis rechazado - Volviendo a borrador" });
   };
 
-  // Revert to draft from reviewed/approved
+  // Helper to increment version
+  const incrementVersion = (currentVersion: string): string => {
+    // Parse version like "v1.0" or "1.0"
+    const match = currentVersion.match(/v?(\d+)\.?(\d*)/i);
+    if (match) {
+      const major = parseInt(match[1], 10);
+      return `v${major + 1}.0`;
+    }
+    return "v2.0";
+  };
+
+  // Revert to draft from reviewed/approved (increments version)
   const revertToDraftMutation = useMutation({
     mutationFn: async () => {
-      if (!id) throw new Error("No template ID");
+      if (!id || !template) throw new Error("No template ID");
+
+      const newVersion = incrementVersion(template.version || "v1.0");
 
       const { error } = await supabase
         .from("document_templates")
         .update({
           status: 'draft',
+          version: newVersion,
           reviewed_at: null,
           reviewed_by: null,
           approved_at: null,
           approved_by: null,
+          analysis_result: null,
+          analyzed_at: null,
         })
         .eq("id", id);
 
       if (error) throw error;
+      return newVersion;
     },
-    onSuccess: () => {
+    onSuccess: (newVersion) => {
       queryClient.invalidateQueries({ queryKey: ["document_templates"] });
       queryClient.invalidateQueries({ queryKey: ["document_template", id] });
-      toast({ title: "Plantilla regresada a borrador", description: "Ahora puedes editar el contenido." });
+      toast({ 
+        title: "Plantilla en modo edición", 
+        description: `Nueva versión: ${newVersion}. Ahora puedes editar el contenido.` 
+      });
     },
     onError: (error) => {
       toast({
@@ -365,18 +385,31 @@ export default function PlantillaEditar() {
                 </p>
               </div>
             </div>
-            <StatusWorkflow
-              currentStatus={currentStatus}
-              onSaveDraft={() => updateMutation.mutate()}
-              onAnalyze={() => analyzeMutation.mutate()}
-              onApprove={() => approveMutation.mutate()}
-              onActivate={() => activateMutation.mutate()}
-              isSaving={updateMutation.isPending}
-              isAnalyzing={analyzeMutation.isPending}
-              isApproving={approveMutation.isPending}
-              isActivating={activateMutation.isPending}
-              canAnalyze={name.trim().length > 0 && content.trim().length > 0}
-            />
+            <div className="flex items-center gap-3">
+              {/* Edit button for reviewed/approved templates */}
+              {['reviewed', 'approved'].includes(currentStatus) && (
+                <Button
+                  variant="outline"
+                  onClick={() => revertToDraftMutation.mutate()}
+                  disabled={revertToDraftMutation.isPending}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  {revertToDraftMutation.isPending ? "Preparando..." : "Editar Plantilla"}
+                </Button>
+              )}
+              <StatusWorkflow
+                currentStatus={currentStatus}
+                onSaveDraft={() => updateMutation.mutate()}
+                onAnalyze={() => analyzeMutation.mutate()}
+                onApprove={() => approveMutation.mutate()}
+                onActivate={() => activateMutation.mutate()}
+                isSaving={updateMutation.isPending}
+                isAnalyzing={analyzeMutation.isPending}
+                isApproving={approveMutation.isPending}
+                isActivating={activateMutation.isPending}
+                canAnalyze={name.trim().length > 0 && content.trim().length > 0}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -451,26 +484,10 @@ export default function PlantillaEditar() {
             {/* Schema preview (for reviewed, approved, active) */}
             {['reviewed', 'approved', 'active'].includes(currentStatus) && (
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader>
                   <CardTitle>Schema Confirmado</CardTitle>
-                  {['reviewed', 'approved'].includes(currentStatus) && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => revertToDraftMutation.mutate()}
-                      disabled={revertToDraftMutation.isPending}
-                    >
-                      <ArrowLeft className="h-4 w-4 mr-2" />
-                      {revertToDraftMutation.isPending ? "Revirtiendo..." : "Volver a Borrador"}
-                    </Button>
-                  )}
                 </CardHeader>
                 <CardContent>
-                  {['reviewed', 'approved'].includes(currentStatus) && (
-                    <p className="text-sm text-muted-foreground mb-4">
-                      ¿Necesitas editar la plantilla? Haz clic en "Volver a Borrador" para desbloquear la edición.
-                    </p>
-                  )}
                   <div className="space-y-3">
                     {blocks.map((block) => (
                       <div
