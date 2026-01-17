@@ -22,6 +22,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import { TableSearch } from "@/components/ui/table-search";
+import { useTableSort } from "@/hooks/useTableSort";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Briefcase, MoreHorizontal, Pencil, Trash2, DollarSign } from "lucide-react";
@@ -68,6 +71,8 @@ export default function Servicios() {
       return data as Service[];
     },
   });
+
+  const { sortConfig, handleSort, searchQuery, setSearchQuery, filteredData } = useTableSort(services);
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -338,8 +343,13 @@ export default function Servicios() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Catálogo de Servicios</CardTitle>
+          <TableSearch 
+            value={searchQuery} 
+            onChange={setSearchQuery} 
+            placeholder="Buscar servicio..."
+          />
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -352,16 +362,16 @@ export default function Servicios() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Descripción</TableHead>
-                  <TableHead>Tipo de Cobro</TableHead>
+                  <SortableTableHead sortKey="name" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Nombre</SortableTableHead>
+                  <SortableTableHead sortKey="description" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Descripción</SortableTableHead>
+                  <SortableTableHead sortKey="fee_type" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Tipo de Cobro</SortableTableHead>
                   <TableHead className="text-right">Honorarios</TableHead>
-                  <TableHead>Estado</TableHead>
+                  <SortableTableHead sortKey="is_active" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Estado</SortableTableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {services?.map((service) => {
+                {filteredData?.map((service) => {
                   const formatCurrency = (amount: number | null) => 
                     amount ? new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(amount) : null;
                   

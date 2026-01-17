@@ -12,6 +12,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import { TableSearch } from "@/components/ui/table-search";
+import { useTableSort } from "@/hooks/useTableSort";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Plus, 
@@ -99,6 +102,9 @@ export default function Clientes() {
     return clientContacts.find((c) => c.is_primary) || clientContacts[0];
   };
 
+  // Sortable and searchable data
+  const { sortConfig, handleSort, searchQuery, setSearchQuery, filteredData } = useTableSort(clients);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -154,8 +160,13 @@ export default function Clientes() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Lista de Clientes</CardTitle>
+          <TableSearch 
+            value={searchQuery} 
+            onChange={setSearchQuery} 
+            placeholder="Buscar cliente..."
+          />
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -176,16 +187,16 @@ export default function Clientes() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Industria</TableHead>
+                  <SortableTableHead sortKey="group_name" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Cliente</SortableTableHead>
+                  <SortableTableHead sortKey="industry" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Industria</SortableTableHead>
                   <TableHead>Contacto Principal</TableHead>
                   <TableHead className="text-center">Razones Sociales</TableHead>
-                  <TableHead className="text-center">Estado</TableHead>
+                  <SortableTableHead sortKey="status" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort} className="text-center">Estado</SortableTableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {clients?.map((client) => {
+                {filteredData?.map((client) => {
                   const primaryContact = getPrimaryContact(client.id);
                   const entitiesCount = getClientEntities(client.id).length;
                   const isComplete = client.status === "completo";
