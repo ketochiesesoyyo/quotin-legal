@@ -43,6 +43,44 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
+// Helper to convert number to Spanish words (for amounts)
+const numberToSpanishWords = (num: number): string => {
+  if (num === 0) return "cero";
+  
+  const units = ["", "un", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve"];
+  const teens = ["diez", "once", "doce", "trece", "catorce", "quince", "dieciséis", "diecisiete", "dieciocho", "diecinueve"];
+  const tens = ["", "", "veinte", "treinta", "cuarenta", "cincuenta", "sesenta", "setenta", "ochenta", "noventa"];
+  const hundreds = ["", "cien", "doscientos", "trescientos", "cuatrocientos", "quinientos", "seiscientos", "setecientos", "ochocientos", "novecientos"];
+  
+  const convertThousands = (n: number): string => {
+    if (n === 0) return "";
+    if (n < 10) return units[n];
+    if (n < 20) return teens[n - 10];
+    if (n < 100) {
+      if (n === 21) return "veintiún";
+      if (n < 30) return n === 20 ? "veinte" : "veinti" + units[n % 10];
+      return tens[Math.floor(n / 10)] + (n % 10 ? " y " + units[n % 10] : "");
+    }
+    if (n < 1000) {
+      if (n === 100) return "cien";
+      return hundreds[Math.floor(n / 100)] + (n % 100 ? " " + convertThousands(n % 100) : "");
+    }
+    if (n < 1000000) {
+      const thousands = Math.floor(n / 1000);
+      const remainder = n % 1000;
+      if (thousands === 1) return "mil" + (remainder ? " " + convertThousands(remainder) : "");
+      return convertThousands(thousands) + " mil" + (remainder ? " " + convertThousands(remainder) : "");
+    }
+    return num.toLocaleString("es-MX");
+  };
+  
+  const integerPart = Math.floor(num);
+  const result = convertThousands(integerPart);
+  
+  // Capitalize first letter
+  return result.charAt(0).toUpperCase() + result.slice(1);
+};
+
 // Helper to get salutation prefix
 const getSalutationPrefix = (fullName: string) => {
   // Simple heuristic - could be improved
@@ -301,29 +339,64 @@ export function ProposalPreview({
                       </div>
                     )}
 
-                    {/* Summary totals */}
+                    {/* Initial payment with installments */}
                     {data.pricing.initialPayment > 0 && (
                       <div className="pl-4 mt-4 pt-2 border-t border-dashed">
-                        <p className="text-sm">
-                          <strong>Total pago inicial:</strong>{" "}
-                          <strong>{formatCurrency(data.pricing.initialPayment)}</strong> más IVA.
-                          {data.pricing.paymentSplit && data.pricing.paymentSplit !== "100" && (
-                            <> Dicho honorario podrá ser cubierto en {data.pricing.paymentSplit.split("/").length} exhibiciones ({data.pricing.paymentSplit}).</>
+                        <p className="text-sm mb-2">
+                          <strong>a) Pago inicial</strong> en cantidad de{" "}
+                          <strong>{formatCurrency(data.pricing.initialPayment)}</strong>{" "}
+                          ({numberToSpanishWords(data.pricing.initialPayment)} pesos 00/100 M.N.) más IVA
+                          {data.pricing.initialPaymentDescription && (
+                            <> correspondiente al {data.pricing.initialPaymentDescription}</>
                           )}
+                          .
                         </p>
+                        
+                        {/* Installments breakdown */}
+                        {data.pricing.installments && data.pricing.installments.length > 1 && (
+                          <p className="text-sm ml-4 mb-2">
+                            Dicho honorario será cubierto{" "}
+                            {data.pricing.installments.map((inst, idx) => {
+                              const amount = (data.pricing.initialPayment * inst.percentage) / 100;
+                              const isLast = idx === data.pricing.installments.length - 1;
+                              const isSecondToLast = idx === data.pricing.installments.length - 2;
+                              
+                              return (
+                                <span key={idx}>
+                                  un {inst.percentage}%
+                                  {inst.description && <> {inst.description}</>}
+                                  {isLast ? "." : isSecondToLast ? " y el " : ", "}
+                                </span>
+                              );
+                            })}
+                          </p>
+                        )}
                       </div>
                     )}
 
                     {/* Monthly retainer */}
                     {data.pricing.monthlyRetainer > 0 && (
                       <div className="pl-4">
-                        <p className="text-sm">
-                          <strong>Total iguala mensual:</strong>{" "}
-                          <strong>{formatCurrency(data.pricing.monthlyRetainer)}</strong> más IVA por
-                          un plazo de {data.pricing.retainerMonths} meses a fin de realizar las
-                          labores de ejecución, implementación y acompañamiento. El
-                          inicio de esta etapa será a libre decisión del cliente.
+                        <p className="text-sm mb-2">
+                          <strong>b) Una iguala mensual</strong> en cantidad de{" "}
+                          <strong>{formatCurrency(data.pricing.monthlyRetainer)}</strong>{" "}
+                          ({numberToSpanishWords(data.pricing.monthlyRetainer)} pesos 00/100 M.N.) más IVA
+                          por un plazo de {data.pricing.retainerMonths} meses a fin de realizar las
+                          labores de ejecución, implementación y acompañamiento de la propuesta.
                         </p>
+                        
+                        {/* Retainer start description */}
+                        {data.pricing.retainerStartDescription && (
+                          <p className="text-sm ml-4 mb-2">
+                            {data.pricing.retainerStartDescription}
+                            {data.pricing.canCancelWithoutPenalty && (
+                              <>, por lo que, en caso de optar por no continuar con el servicio, 
+                              podrá libremente hacerlo sin penalidad alguna bastando una comunicación 
+                              escrita o por correo electrónico</>
+                            )}
+                            .
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>

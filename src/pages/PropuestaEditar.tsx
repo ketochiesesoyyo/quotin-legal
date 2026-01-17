@@ -31,6 +31,7 @@ import type {
   ProposalPreviewData,
   FirmSettings,
   PricingMode,
+  PaymentInstallment,
 } from "@/components/propuestas/types";
 
 export default function PropuestaEditar() {
@@ -49,7 +50,14 @@ export default function PropuestaEditar() {
   const [customInitialPayment, setCustomInitialPayment] = useState(0);
   const [customMonthlyRetainer, setCustomMonthlyRetainer] = useState(0);
   const [customRetainerMonths, setCustomRetainerMonths] = useState(12);
-  const [paymentSplit, setPaymentSplit] = useState("50/50");
+  const [installments, setInstallments] = useState<PaymentInstallment[]>([
+    { percentage: 50, description: "al momento de aceptación de la presente propuesta" },
+    { percentage: 50, description: "al momento de presentación de la propuesta de reestructura" },
+  ]);
+  const [retainerStartDescription, setRetainerStartDescription] = useState(
+    "El inicio de esta etapa será a libre decisión del cliente"
+  );
+  const [canCancelWithoutPenalty, setCanCancelWithoutPenalty] = useState(true);
   const [pricingMode, setPricingMode] = useState<PricingMode>('per_service');
   const [isPricingConfigOpen, setIsPricingConfigOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -453,8 +461,18 @@ export default function PropuestaEditar() {
       setCustomInitialPayment(Number(template.initial_payment) || 0);
       setCustomMonthlyRetainer(Number(template.monthly_retainer) || 0);
       setCustomRetainerMonths(Number(template.retainer_months) || 12);
+      // Convert template split to installments if available
       if (template.initial_payment_split) {
-        setPaymentSplit(template.initial_payment_split);
+        const parts = template.initial_payment_split.split("/").map(p => parseInt(p.trim()));
+        const newInstallments = parts.map((percentage, idx) => ({
+          percentage,
+          description: idx === 0 
+            ? "al momento de aceptación de la presente propuesta" 
+            : idx === parts.length - 1 
+              ? "al momento de presentación de la propuesta" 
+              : `en el pago ${idx + 1}`,
+        }));
+        setInstallments(newInstallments);
       }
       // Automatically switch to global mode when selecting template
       setPricingMode('global');
@@ -465,12 +483,16 @@ export default function PropuestaEditar() {
     initialPayment?: number;
     monthlyRetainer?: number;
     retainerMonths?: number;
-    paymentSplit?: string;
+    installments?: PaymentInstallment[];
+    retainerStartDescription?: string;
+    canCancelWithoutPenalty?: boolean;
   }) => {
     if (updates.initialPayment !== undefined) setCustomInitialPayment(updates.initialPayment);
     if (updates.monthlyRetainer !== undefined) setCustomMonthlyRetainer(updates.monthlyRetainer);
     if (updates.retainerMonths !== undefined) setCustomRetainerMonths(updates.retainerMonths);
-    if (updates.paymentSplit !== undefined) setPaymentSplit(updates.paymentSplit);
+    if (updates.installments !== undefined) setInstallments(updates.installments);
+    if (updates.retainerStartDescription !== undefined) setRetainerStartDescription(updates.retainerStartDescription);
+    if (updates.canCancelWithoutPenalty !== undefined) setCanCancelWithoutPenalty(updates.canCancelWithoutPenalty);
     // When manually updating pricing, switch to global mode
     setPricingMode('global');
     setSelectedPricingId(null); // Clear template when customizing
@@ -587,9 +609,11 @@ export default function PropuestaEditar() {
       pricing: {
         initialPayment: customInitialPayment,
         initialPaymentDescription: "estudio, análisis y propuesta de reestructura corporativa y fiscal",
-        paymentSplit,
+        installments,
         monthlyRetainer: customMonthlyRetainer,
         retainerMonths: customRetainerMonths,
+        retainerStartDescription,
+        canCancelWithoutPenalty,
         exclusionsText: null,
         totalAmount: totalCost,
         roi: totalCost > 0 ? `${(estimatedSavings / totalCost).toFixed(1)}x` : "",
@@ -608,7 +632,7 @@ export default function PropuestaEditar() {
           }
         : undefined,
     };
-  }, [client, entities, proposalBackground, services, customInitialPayment, customMonthlyRetainer, customRetainerMonths, paymentSplit, pricingMode, firmSettings, recipientData]);
+  }, [client, entities, proposalBackground, services, customInitialPayment, customMonthlyRetainer, customRetainerMonths, installments, retainerStartDescription, canCancelWithoutPenalty, pricingMode, firmSettings, recipientData]);
 
   // Validated data for display
   const validatedData = useMemo(() => ({
@@ -763,7 +787,9 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                   customInitialPayment={customInitialPayment}
                   customMonthlyRetainer={customMonthlyRetainer}
                   customRetainerMonths={customRetainerMonths}
-                  paymentSplit={paymentSplit}
+                  installments={installments}
+                  retainerStartDescription={retainerStartDescription}
+                  canCancelWithoutPenalty={canCancelWithoutPenalty}
                   onSelectTemplate={handleSelectTemplate}
                   onUpdatePricing={handleUpdatePricing}
                 />
