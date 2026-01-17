@@ -79,8 +79,8 @@ function ServiceCard({
 
   // Can edit fees in both per_service and summed modes
   const canEditFees = pricingMode === 'per_service' || pricingMode === 'summed';
-  // Show individual prices only in per_service mode
-  const showIndividualPrices = pricingMode === 'per_service';
+  // Show individual prices in per_service and summed modes (to see what you're editing)
+  const showIndividualPrices = pricingMode === 'per_service' || pricingMode === 'summed';
 
   return (
     <div
