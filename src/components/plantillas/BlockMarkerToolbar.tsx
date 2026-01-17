@@ -4,7 +4,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Lock, Variable, Sparkles, Bold, Italic, List, AlignLeft, AlignCenter, Heading1, Heading2 } from "lucide-react";
+import { Lock, Variable, Sparkles, Bold, Italic, List, AlignLeft, AlignCenter, Heading1, Heading2, Eraser } from "lucide-react";
 import type { Editor } from "@tiptap/react";
 
 interface BlockMarkerToolbarProps {
@@ -12,6 +12,7 @@ interface BlockMarkerToolbarProps {
   onMarkAsStatic: () => void;
   onMarkAsVariable: () => void;
   onMarkAsDynamic: () => void;
+  onRemoveMark: () => void;
 }
 
 export function BlockMarkerToolbar({ 
@@ -19,10 +20,12 @@ export function BlockMarkerToolbar({
   onMarkAsStatic, 
   onMarkAsVariable,
   onMarkAsDynamic,
+  onRemoveMark,
 }: BlockMarkerToolbarProps) {
   if (!editor) return null;
 
   const hasSelection = !editor.state.selection.empty;
+  const hasHighlight = editor.isActive('highlight');
 
   return (
     <div className="flex items-center gap-1 p-2 border-b bg-muted/30 flex-wrap">
@@ -82,6 +85,25 @@ export function BlockMarkerToolbar({
           </TooltipTrigger>
           <TooltipContent>
             <p>Marcar como dinámico (la IA genera contenido personalizado)</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onRemoveMark}
+              disabled={!hasSelection || !hasHighlight}
+              className="gap-1 border-red-300 text-red-700 hover:bg-red-50"
+            >
+              <Eraser className="h-4 w-4" />
+              <span className="hidden sm:inline">Quitar</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Quitar marca del texto seleccionado</p>
           </TooltipContent>
         </Tooltip>
       </div>
