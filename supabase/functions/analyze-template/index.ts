@@ -133,21 +133,39 @@ Deno.serve(async (req) => {
         };
       });
 
-      // Generate warnings
+      // Generate human-friendly warnings
       const warnings: string[] = [];
       
-      detectedBlocks.forEach((block) => {
+      detectedBlocks.forEach((block, index) => {
+        const blockNumber = index + 1;
+        
         if (block.confidence < 0.7) {
           warnings.push(
-            `Bloque ${block.block_id}: Confianza baja (${Math.round(block.confidence * 100)}%) - requiere revisión manual`
+            `⚠️ El bloque #${blockNumber} tiene baja certeza de clasificación. Te recomendamos revisarlo manualmente.`
           );
         }
         
         const originalBlock = existingBlocks.find((b) => b.id === block.block_id);
         if (originalBlock?.type !== block.suggested_type) {
-          warnings.push(
-            `Bloque ${block.block_id}: Tipo cambiado de ${originalBlock?.type} a ${block.suggested_type} - ${block.reason}`
-          );
+          // Human-friendly explanations
+          const fromTypeHuman = originalBlock?.type === 'dynamic' ? 'Dinámico' : 
+                                originalBlock?.type === 'variable' ? 'Variable' : 'Fijo';
+          const toTypeHuman = block.suggested_type === 'static' ? 'Fijo' : 
+                              block.suggested_type === 'variable' ? 'Variable' : 'Dinámico';
+          
+          if (block.reason === 'legal_clause_detected') {
+            warnings.push(
+              `📋 Bloque #${blockNumber}: Marcaste este texto como "${fromTypeHuman}", pero detectamos términos legales (como cláusulas de confidencialidad o jurisdicción). Por seguridad, te sugerimos cambiarlo a "${toTypeHuman}" para evitar que la IA modifique contenido legal sensible.`
+            );
+          } else if (block.reason === 'variable_pattern_detected') {
+            warnings.push(
+              `📝 Bloque #${blockNumber}: Detectamos variables como {{nombre}} en este texto. Te sugerimos marcarlo como "Variable" para que se complete automáticamente con los datos del cliente.`
+            );
+          } else {
+            warnings.push(
+              `ℹ️ Bloque #${blockNumber}: Sugerimos cambiar de "${fromTypeHuman}" a "${toTypeHuman}" basándonos en el contenido del texto.`
+            );
+          }
         }
       });
 
@@ -247,13 +265,13 @@ Deno.serve(async (req) => {
       };
     });
 
-    // Generate warnings
+    // Generate human-friendly warnings
     const warnings: string[] = [];
     
     const lowConfidenceBlocks = detectedBlocks.filter((b) => b.confidence < 0.7);
     if (lowConfidenceBlocks.length > 0) {
       warnings.push(
-        `${lowConfidenceBlocks.length} bloque(s) con confianza baja - marcados como STATIC por defecto`
+        `⚠️ Encontramos ${lowConfidenceBlocks.length} sección(es) donde no estamos seguros de cómo clasificarlas. Las marcamos como "Fijo" por seguridad, pero te recomendamos revisarlas.`
       );
     }
 
@@ -261,11 +279,9 @@ Deno.serve(async (req) => {
       (b) => b.reason === "legal_boilerplate"
     );
     if (staticLegalBlocks.length > 0) {
-      staticLegalBlocks.forEach((b) => {
-        warnings.push(
-          `Bloque ${b.block_id}: Cláusula legal detectada - forzado a STATIC por seguridad`
-        );
-      });
+      warnings.push(
+        `📋 Detectamos ${staticLegalBlocks.length} sección(es) con términos legales importantes (como cláusulas de confidencialidad o responsabilidad). Las marcamos como "Fijo" para proteger el contenido legal y evitar modificaciones automáticas.`
+      );
     }
 
     // Calculate overall confidence
