@@ -3,7 +3,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { getErrorMessage } from "@/lib/error-utils";
+import { getErrorMessage, formatErrorForToast, withRetry } from "@/lib/error-utils";
+import { useProposalVersions, type ProposalVersionContent } from "@/hooks/useProposalVersions";
+import { useAuditLog } from "@/hooks/useAuditLog";
 import { Loader2 } from "lucide-react";
 import { EditorHeader } from "@/components/propuestas/EditorHeader";
 import { ProgressIndicator } from "@/components/propuestas/ProgressIndicator";
@@ -85,6 +87,10 @@ export default function PropuestaEditar() {
   // Document template state (Sprint 2)
   const [selectedDocumentTemplate, setSelectedDocumentTemplate] = useState<DocumentTemplate | null>(null);
   const [previewMode, setPreviewMode] = useState<'classic' | 'template'>('classic');
+
+  // Sprint 3: Proposal versions and audit logging
+  const { saveVersion, versions, latestVersionNumber, isSaving: isSavingVersion } = useProposalVersions(id);
+  const { log: logAudit } = useAuditLog();
 
   // Fetch case data - refetch while AI is analyzing
   const { data: caseData, isLoading: loadingCase } = useQuery({
@@ -512,23 +518,34 @@ export default function PropuestaEditar() {
     setSelectedPricingId(null); // Clear template when customizing
   };
 
-  // Save mutation
+  // Save mutation with versioning and audit logging
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // Update case
-      const { error: caseError } = await supabase
-        .from("cases")
-        .update({
-          custom_initial_payment: customInitialPayment,
-          custom_monthly_retainer: customMonthlyRetainer,
-          custom_retainer_months: customRetainerMonths,
-          selected_pricing_id: selectedPricingId,
-          pricing_mode: pricingMode,
-          status: "borrador",
-        } as any)
-        .eq("id", id!);
+      // Capture old values for audit log
+      const oldValues = caseData ? {
+        custom_initial_payment: caseData.custom_initial_payment,
+        custom_monthly_retainer: caseData.custom_monthly_retainer,
+        custom_retainer_months: caseData.custom_retainer_months,
+        pricing_mode: (caseData as any).pricing_mode,
+        status: caseData.status,
+      } : null;
 
-      if (caseError) throw caseError;
+      // Update case with retry logic
+      await withRetry(async () => {
+        const { error: caseError } = await supabase
+          .from("cases")
+          .update({
+            custom_initial_payment: customInitialPayment,
+            custom_monthly_retainer: customMonthlyRetainer,
+            custom_retainer_months: customRetainerMonths,
+            selected_pricing_id: selectedPricingId,
+            pricing_mode: pricingMode,
+            status: "borrador",
+          } as any)
+          .eq("id", id!);
+
+        if (caseError) throw caseError;
+      }, { maxRetries: 2 });
 
       // Delete existing case services
       await supabase.from("case_services").delete().eq("case_id", id!);
@@ -548,17 +565,67 @@ export default function PropuestaEditar() {
         );
         if (servicesError) throw servicesError;
       }
+
+      // Log audit entry
+      logAudit({
+        action: "update",
+        tableName: "cases",
+        recordId: id!,
+        oldValues,
+        newValues: {
+          custom_initial_payment: customInitialPayment,
+          custom_monthly_retainer: customMonthlyRetainer,
+          custom_retainer_months: customRetainerMonths,
+          pricing_mode: pricingMode,
+          status: "borrador",
+        },
+      });
+
+      // Save proposal version
+      const versionContent: ProposalVersionContent = {
+        background: proposalBackground,
+        services: selectedServices.map(s => ({
+          serviceId: s.service.id,
+          serviceName: s.service.name,
+          customText: s.customText,
+          customFee: s.customFee,
+          customMonthlyFee: s.customMonthlyFee,
+        })),
+        pricing: {
+          initialPayment: customInitialPayment,
+          monthlyRetainer: customMonthlyRetainer,
+          retainerMonths: customRetainerMonths,
+          pricingMode,
+        },
+        recipient: {
+          fullName: recipientData.fullName,
+          position: recipientData.position,
+        },
+        generatedContent,
+        documentTemplateId: selectedDocumentTemplate?.id,
+      };
+
+      try {
+        await saveVersion(versionContent);
+      } catch (versionError) {
+        // Version saving should not block the main save
+        console.error("Error saving version:", versionError);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["case", id] });
       queryClient.invalidateQueries({ queryKey: ["case_services", id] });
       queryClient.invalidateQueries({ queryKey: ["cases"] });
-      toast({ title: "Propuesta guardada" });
+      toast({ 
+        title: "Propuesta guardada",
+        description: `Versión ${latestVersionNumber + 1} creada`,
+      });
     },
     onError: (error) => {
+      const { title, description } = formatErrorForToast(error);
       toast({
-        title: "Error al guardar",
-        description: getErrorMessage(error),
+        title,
+        description,
         variant: "destructive",
       });
     },
@@ -566,16 +633,23 @@ export default function PropuestaEditar() {
 
   const handleGenerate = async () => {
     setIsGenerating(true);
-    await saveMutation.mutateAsync();
-    setIsGenerating(false);
-    setShowFullPreview(true); // Open full preview modal after saving
+    try {
+      await saveMutation.mutateAsync();
+      setShowFullPreview(true); // Open full preview modal after saving
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleSaveDraft = async () => {
     setIsGenerating(true);
-    await saveMutation.mutateAsync();
-    setIsGenerating(false);
+    try {
+      await saveMutation.mutateAsync();
+    } finally {
+      setIsGenerating(false);
+    }
   };
+
 
   const handleDownload = () => {
     toast({ title: "Descarga", description: "Funcionalidad próximamente disponible" });
