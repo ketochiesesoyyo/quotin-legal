@@ -1,4 +1,4 @@
-import { ArrowLeft, Save, Download, Send, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, Download, Send, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -8,6 +8,9 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import type { ProposalPreviewData } from "./types";
+import { useRef, useState } from "react";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 interface ProposalFullPreviewProps {
   open: boolean;
@@ -72,6 +75,55 @@ export function ProposalFullPreview({
 }: ProposalFullPreviewProps) {
   const firmName = data.firmSettings?.name || "Nuestra Firma";
   const isComplete = progress >= 80;
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+
+  const handleDownloadPDF = async () => {
+    if (!contentRef.current) return;
+    
+    setIsGeneratingPDF(true);
+    try {
+      const element = contentRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const imgScaledWidth = imgWidth * ratio;
+      const imgScaledHeight = imgHeight * ratio;
+      
+      // Handle multi-page if content is taller than one page
+      const pageHeight = pdfHeight;
+      const totalPages = Math.ceil((imgScaledHeight * (imgWidth / imgScaledWidth)) / (pageHeight * (imgWidth / pdfWidth)));
+      
+      for (let page = 0; page < totalPages; page++) {
+        if (page > 0) pdf.addPage();
+        const yOffset = -page * pageHeight * (imgWidth / pdfWidth) / ratio;
+        pdf.addImage(imgData, 'PNG', 0, yOffset * ratio, imgScaledWidth, imgScaledHeight);
+      }
+      
+      const fileName = `Propuesta_${data.clientName || 'Cliente'}_${new Date().toISOString().split('T')[0]}.pdf`;
+      pdf.save(fileName);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -92,22 +144,12 @@ export function ProposalFullPreview({
               </Badge>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={onSaveDraft} disabled={isSaving}>
-              {isSaving ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4 mr-2" />
-              )}
-              Guardar borrador
-            </Button>
-          </div>
         </div>
 
         {/* Content */}
         <ScrollArea className="flex-1">
           <div className="max-w-3xl mx-auto p-8">
-            <div className="bg-white dark:bg-card rounded-lg border shadow-sm p-8">
+            <div ref={contentRef} className="bg-white dark:bg-card rounded-lg border shadow-sm p-8">
               {/* ============ MEMBRETE ============ */}
               <div className="text-center mb-8">
                 {data.firmSettings?.logo_url && (
@@ -370,9 +412,13 @@ export function ProposalFullPreview({
             )}
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={onDownloadPDF}>
-              <Download className="h-4 w-4 mr-2" />
-              Descargar PDF
+            <Button variant="outline" onClick={handleDownloadPDF} disabled={isGeneratingPDF}>
+              {isGeneratingPDF ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              {isGeneratingPDF ? "Generando..." : "Descargar PDF"}
             </Button>
             <Button onClick={onSendToClient} disabled={!isComplete}>
               <Send className="h-4 w-4 mr-2" />
