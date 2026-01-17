@@ -22,6 +22,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import { TableSearch } from "@/components/ui/table-search";
+import { useTableSort } from "@/hooks/useTableSort";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, DollarSign, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
@@ -61,6 +64,8 @@ export default function Honorarios() {
       return data as PricingTemplate[];
     },
   });
+
+  const { sortConfig, handleSort, searchQuery, setSearchQuery, filteredData } = useTableSort(templates);
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -312,8 +317,13 @@ export default function Honorarios() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Plantillas de Honorarios</CardTitle>
+          <TableSearch 
+            value={searchQuery} 
+            onChange={setSearchQuery} 
+            placeholder="Buscar plantilla..."
+          />
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -326,16 +336,16 @@ export default function Honorarios() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Pago Inicial</TableHead>
-                  <TableHead>Iguala Mensual</TableHead>
-                  <TableHead>Duración</TableHead>
-                  <TableHead>Estado</TableHead>
+                  <SortableTableHead sortKey="name" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Nombre</SortableTableHead>
+                  <SortableTableHead sortKey="initial_payment" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Pago Inicial</SortableTableHead>
+                  <SortableTableHead sortKey="monthly_retainer" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Iguala Mensual</SortableTableHead>
+                  <SortableTableHead sortKey="retainer_months" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Duración</SortableTableHead>
+                  <SortableTableHead sortKey="is_active" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Estado</SortableTableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {templates?.map((template) => (
+                {filteredData?.map((template) => (
                   <TableRow key={template.id}>
                     <TableCell className="font-medium">{template.name}</TableCell>
                     <TableCell>{formatCurrency(template.initial_payment)}</TableCell>

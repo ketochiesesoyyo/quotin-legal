@@ -9,6 +9,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import { TableSearch } from "@/components/ui/table-search";
+import { useTableSort } from "@/hooks/useTableSort";
 import {
   Select,
   SelectContent,
@@ -55,6 +58,8 @@ export default function Usuarios() {
       return data as UserRole[];
     },
   });
+
+  const { sortConfig, handleSort, searchQuery, setSearchQuery, filteredData } = useTableSort(profiles);
 
   const updateRoleMutation = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
@@ -137,8 +142,13 @@ export default function Usuarios() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Lista de Usuarios</CardTitle>
+          <TableSearch 
+            value={searchQuery} 
+            onChange={setSearchQuery} 
+            placeholder="Buscar usuario..."
+          />
         </CardHeader>
         <CardContent>
           {profilesLoading ? (
@@ -151,15 +161,15 @@ export default function Usuarios() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Email</TableHead>
+                  <SortableTableHead sortKey="full_name" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Nombre</SortableTableHead>
+                  <SortableTableHead sortKey="email" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Email</SortableTableHead>
                   <TableHead>Rol</TableHead>
-                  <TableHead>Fecha de Registro</TableHead>
+                  <SortableTableHead sortKey="created_at" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Fecha de Registro</SortableTableHead>
                   <TableHead>Cambiar Rol</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {profiles?.map((profile) => {
+                {filteredData?.map((profile) => {
                   const role = getUserRole(profile.user_id);
                   return (
                     <TableRow key={profile.id}>
