@@ -2,6 +2,8 @@ import { DollarSign, Calendar } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -9,7 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { PricingTemplate } from "./types";
+import { InstallmentsEditor } from "./InstallmentsEditor";
+import type { PricingTemplate, PaymentInstallment } from "./types";
 
 interface PricingSectionProps {
   templates: PricingTemplate[];
@@ -17,13 +20,17 @@ interface PricingSectionProps {
   customInitialPayment: number;
   customMonthlyRetainer: number;
   customRetainerMonths: number;
-  paymentSplit: string;
+  installments: PaymentInstallment[];
+  retainerStartDescription: string;
+  canCancelWithoutPenalty: boolean;
   onSelectTemplate: (templateId: string) => void;
   onUpdatePricing: (updates: {
     initialPayment?: number;
     monthlyRetainer?: number;
     retainerMonths?: number;
-    paymentSplit?: string;
+    installments?: PaymentInstallment[];
+    retainerStartDescription?: string;
+    canCancelWithoutPenalty?: boolean;
   }) => void;
 }
 
@@ -33,7 +40,9 @@ export function PricingSection({
   customInitialPayment,
   customMonthlyRetainer,
   customRetainerMonths,
-  paymentSplit,
+  installments,
+  retainerStartDescription,
+  canCancelWithoutPenalty,
   onSelectTemplate,
   onUpdatePricing,
 }: PricingSectionProps) {
@@ -48,17 +57,6 @@ export function PricingSection({
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
-  };
-
-  const getPaymentSchemeText = () => {
-    if (customRetainerMonths > 0 && customMonthlyRetainer > 0) {
-      const parts = paymentSplit.split("/");
-      if (parts.length > 1) {
-        return `${parts.length} pagos: ${paymentSplit}`;
-      }
-      return `${customRetainerMonths} mensualidades`;
-    }
-    return "Pago único";
   };
 
   return (
@@ -92,87 +90,111 @@ export function PricingSection({
           </Select>
         </div>
 
-        {/* 5 Input Cards Grid */}
-        <div className="grid grid-cols-2 gap-3">
-          {/* Pago inicial */}
-          <div className="p-3 bg-muted/50 rounded-lg space-y-2">
-            <Label className="text-xs text-muted-foreground">Pago inicial</Label>
-            <div className="relative">
-              <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="number"
-                value={customInitialPayment}
-                onChange={(e) =>
-                  onUpdatePricing({
-                    initialPayment: parseFloat(e.target.value) || 0,
-                  })
-                }
-                className="pl-8 h-9"
-                placeholder="0"
-              />
-            </div>
-          </div>
-
-          {/* División del pago inicial */}
-          <div className="p-3 bg-muted/50 rounded-lg space-y-2">
-            <Label className="text-xs text-muted-foreground">División del pago</Label>
-            <Select
-              value={paymentSplit}
-              onValueChange={(value) =>
-                onUpdatePricing({ paymentSplit: value })
+        {/* Pago inicial */}
+        <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+          <Label className="text-xs text-muted-foreground">Pago inicial</Label>
+          <div className="relative">
+            <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="number"
+              value={customInitialPayment}
+              onChange={(e) =>
+                onUpdatePricing({
+                  initialPayment: parseFloat(e.target.value) || 0,
+                })
               }
-            >
-              <SelectTrigger className="h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="100">Pago único (100%)</SelectItem>
-                <SelectItem value="50/50">2 pagos (50/50)</SelectItem>
-                <SelectItem value="50/25/25">3 pagos (50/25/25)</SelectItem>
-                <SelectItem value="40/30/30">3 pagos (40/30/30)</SelectItem>
-              </SelectContent>
-            </Select>
+              className="pl-8 h-9"
+              placeholder="0"
+            />
           </div>
+        </div>
 
-          {/* Iguala mensual */}
-          <div className="p-3 bg-muted/50 rounded-lg space-y-2">
-            <Label className="text-xs text-muted-foreground">Iguala mensual</Label>
-            <div className="relative">
-              <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="number"
-                value={customMonthlyRetainer}
-                onChange={(e) =>
-                  onUpdatePricing({
-                    monthlyRetainer: parseFloat(e.target.value) || 0,
-                  })
-                }
-                className="pl-8 h-9"
-                placeholder="0"
-              />
+        {/* Installments Editor */}
+        {customInitialPayment > 0 && (
+          <div className="p-3 bg-muted/50 rounded-lg">
+            <InstallmentsEditor
+              installments={installments}
+              onChange={(newInstallments) =>
+                onUpdatePricing({ installments: newInstallments })
+              }
+              totalAmount={customInitialPayment}
+            />
+          </div>
+        )}
+
+        {/* Iguala mensual section */}
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            {/* Iguala mensual */}
+            <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+              <Label className="text-xs text-muted-foreground">Iguala mensual</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="number"
+                  value={customMonthlyRetainer}
+                  onChange={(e) =>
+                    onUpdatePricing({
+                      monthlyRetainer: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                  className="pl-8 h-9"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
+            {/* Meses de iguala */}
+            <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+              <Label className="text-xs text-muted-foreground">Meses de iguala</Label>
+              <div className="relative">
+                <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="number"
+                  value={customRetainerMonths}
+                  onChange={(e) =>
+                    onUpdatePricing({
+                      retainerMonths: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  className="pl-8 h-9"
+                  placeholder="12"
+                  min="0"
+                  max="60"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Meses de iguala */}
-          <div className="p-3 bg-muted/50 rounded-lg space-y-2">
-            <Label className="text-xs text-muted-foreground">Meses de iguala</Label>
-            <div className="relative">
-              <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="number"
-                value={customRetainerMonths}
+          {/* Retainer start description */}
+          {customMonthlyRetainer > 0 && (
+            <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+              <Label className="text-xs text-muted-foreground">
+                Descripción de inicio de la iguala
+              </Label>
+              <Textarea
+                value={retainerStartDescription}
                 onChange={(e) =>
-                  onUpdatePricing({
-                    retainerMonths: parseInt(e.target.value) || 0,
-                  })
+                  onUpdatePricing({ retainerStartDescription: e.target.value })
                 }
-                className="pl-8 h-9"
-                placeholder="12"
-                min="0"
-                max="60"
+                placeholder="El inicio de esta etapa será a libre decisión del cliente"
+                className="text-sm resize-none"
+                rows={2}
               />
+              
+              <div className="flex items-center justify-between pt-2">
+                <Label className="text-xs text-muted-foreground">
+                  Cliente puede cancelar sin penalidad
+                </Label>
+                <Switch
+                  checked={canCancelWithoutPenalty}
+                  onCheckedChange={(checked) =>
+                    onUpdatePricing({ canCancelWithoutPenalty: checked })
+                  }
+                />
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Total Summary */}

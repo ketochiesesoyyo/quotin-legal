@@ -13,6 +13,12 @@ export type CaseStatus = Enums<"case_status">;
 // Pricing mode for proposal fee calculation
 export type PricingMode = 'per_service' | 'summed' | 'global';
 
+// Payment installment for initial payment (e.g., 50% at signing, 50% at delivery)
+export interface PaymentInstallment {
+  percentage: number;  // e.g., 50
+  description: string; // e.g., "al momento de aceptación de la presente propuesta"
+}
+
 export interface AIAnalysis {
   objective: string;
   risks: string[];
@@ -129,9 +135,12 @@ export interface ProposalPreviewData {
   pricing: {
     initialPayment: number;
     initialPaymentDescription: string;
-    paymentSplit: string;
+    installments: PaymentInstallment[]; // Replaces paymentSplit for detailed control
+    paymentSplit?: string; // Keep for backward compatibility
     monthlyRetainer: number;
     retainerMonths: number;
+    retainerStartDescription: string; // e.g., "El inicio de esta etapa será a libre decisión del cliente"
+    canCancelWithoutPenalty: boolean;
     exclusionsText?: string | null;
     totalAmount: number;
     roi: string;

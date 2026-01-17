@@ -126,7 +126,7 @@ function ServiceCard({
             <div className="mt-3 flex items-center gap-4 flex-wrap">
               {showOneTimeFee && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Único:</span>
+                  <span className="text-xs text-muted-foreground">Inicial:</span>
                   <span className={`text-sm font-semibold ${feeModified ? 'text-amber-600' : ''}`}>
                     {formatCurrency(currentFee)}
                   </span>
@@ -223,7 +223,7 @@ function ServiceCard({
                   <div className="grid grid-cols-2 gap-3">
                     {showOneTimeFee && (
                       <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Pago único</Label>
+                        <Label className="text-xs text-muted-foreground">Pago inicial</Label>
                         <div className="relative">
                           <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                           <Input
@@ -398,7 +398,7 @@ export function ServicesSection({
               <div className="flex items-center gap-4">
                 {totalOneTime > 0 && (
                   <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Pago único</p>
+                    <p className="text-xs text-muted-foreground">Pago inicial</p>
                     <p className="font-bold">{formatCurrency(totalOneTime)}</p>
                   </div>
                 )}
