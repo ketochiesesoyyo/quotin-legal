@@ -174,7 +174,7 @@ export function BlockMarkerToolbar({
 
       {/* Info about dynamic blocks */}
       <div className="ml-auto text-xs text-muted-foreground hidden lg:block">
-        💡 Los bloques "Dinámicos" estarán disponibles en una versión futura
+        💡 Usa "Dinámico" para bloques que la IA generará al compilar
       </div>
     </div>
   );

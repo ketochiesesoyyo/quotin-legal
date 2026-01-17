@@ -157,9 +157,10 @@ export default function PlantillaEditar() {
   const confirmSchemaMutation = useMutation({
     mutationFn: async (decisions: Array<{
       block_id: string;
-      modified_type?: 'static' | 'variable';
+      modified_type?: 'static' | 'variable' | 'dynamic';
       variable_name?: string;
       source?: string;
+      instructions?: string;
     }>) => {
       if (!id || !user) throw new Error("Missing template or user");
 
@@ -170,6 +171,7 @@ export default function PlantillaEditar() {
         order: index,
         variableName: d.variable_name,
         source: d.source,
+        instructions: d.instructions,
         required: d.modified_type === 'variable',
         format: 'richtext' as const,
       }));

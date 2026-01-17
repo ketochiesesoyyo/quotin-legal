@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.generate-proposal-content]
 verify_jwt = false
+
+[functions.generate-dynamic-content]
+verify_jwt = false

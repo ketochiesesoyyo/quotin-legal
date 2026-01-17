@@ -8,10 +8,8 @@ export type TemplateStatus = 'draft' | 'analyzed' | 'reviewed' | 'approved' | 'a
 // Tipos de origen del contenido
 export type SourceType = 'manual' | 'docx';
 
-// SPRINT 1: Solo static y variable
-// 'dynamic' existe en el tipo pero está DESHABILITADO en la UI
-export type BlockType = 'static' | 'variable';
-// Para P2: export type BlockType = 'static' | 'variable' | 'dynamic';
+// SPRINT 2: Habilitado 'dynamic' con IA
+export type BlockType = 'static' | 'variable' | 'dynamic';
 
 // Estructura de un bloque de plantilla
 export interface TemplateBlock {
@@ -24,8 +22,8 @@ export interface TemplateBlock {
   variableName?: string;     // e.g., "objectives", "client_name"
   required?: boolean;
   format?: 'richtext' | 'text' | 'list';
-  // SPRINT 1: 'instructions' solo para P2 cuando se habilite 'dynamic'
-  // instructions?: string;
+  // Para bloques dynamic (generados por IA)
+  instructions?: string;     // Instrucciones para la IA sobre qué generar
 }
 
 // Schema de la plantilla (FUENTE DE VERDAD)

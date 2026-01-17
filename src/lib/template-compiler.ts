@@ -80,12 +80,15 @@ export interface CompilerContext {
 
 export interface CompiledBlock {
   id: string;
-  type: 'static' | 'variable';
+  type: 'static' | 'variable' | 'dynamic';
   originalContent: string;
   compiledContent: string;
   variableName?: string;
   source?: string;
+  instructions?: string;
   wasCompiled: boolean;
+  generatedByAI?: boolean;
+  aiError?: string;
 }
 
 export interface CompiledDocument {
@@ -94,6 +97,7 @@ export interface CompiledDocument {
   text: string;
   compiledAt: string;
   warnings: string[];
+  hasDynamicBlocks: boolean;
 }
 
 // ============================================
@@ -185,7 +189,8 @@ function resolveSource(source: string, context: CompilerContext): string {
 }
 
 /**
- * Compiles a single template block
+ * Compiles a single template block (static or variable)
+ * Dynamic blocks are handled separately by generateDynamicContent
  */
 function compileBlock(block: TemplateBlock, context: CompilerContext): CompiledBlock {
   const result: CompiledBlock = {
@@ -195,7 +200,9 @@ function compileBlock(block: TemplateBlock, context: CompilerContext): CompiledB
     compiledContent: block.content,
     variableName: block.variableName,
     source: block.source,
+    instructions: block.instructions,
     wasCompiled: false,
+    generatedByAI: false,
   };
 
   if (block.type === 'static') {
@@ -208,6 +215,14 @@ function compileBlock(block: TemplateBlock, context: CompilerContext): CompiledB
       // If compilation fails, use original content
       result.compiledContent = block.content;
     }
+    return result;
+  }
+
+  if (block.type === 'dynamic') {
+    // Dynamic blocks need AI generation - mark as pending
+    // The actual generation happens via generateDynamicContent
+    result.compiledContent = block.content; // Keep placeholder until AI generates
+    result.wasCompiled = false;
     return result;
   }
 
@@ -236,6 +251,7 @@ function compileBlock(block: TemplateBlock, context: CompilerContext): CompiledB
 
 /**
  * Compiles a complete template schema with the provided context
+ * Note: Dynamic blocks will have wasCompiled=false until generateDynamicContent is called
  */
 export function compileTemplate(
   schema: TemplateSchema,
@@ -247,6 +263,8 @@ export function compileTemplate(
   // Sort blocks by order
   const sortedBlocks = [...schema.blocks].sort((a, b) => a.order - b.order);
 
+  let hasDynamicBlocks = false;
+
   for (const block of sortedBlocks) {
     const compiled = compileBlock(block, context);
     compiledBlocks.push(compiled);
@@ -254,6 +272,14 @@ export function compileTemplate(
     // Track unresolved variables
     if (block.type === 'variable' && !compiled.wasCompiled) {
       warnings.push(`Variable "${block.variableName || block.id}" no se pudo resolver desde "${block.source}"`);
+    }
+
+    // Track dynamic blocks
+    if (block.type === 'dynamic') {
+      hasDynamicBlocks = true;
+      if (!block.instructions) {
+        warnings.push(`Bloque dinámico "${block.id}" no tiene instrucciones configuradas`);
+      }
     }
   }
 
@@ -272,6 +298,7 @@ export function compileTemplate(
     text,
     compiledAt: new Date().toISOString(),
     warnings,
+    hasDynamicBlocks,
   };
 }
 
