@@ -74,6 +74,15 @@ export interface FirmSettings {
 export interface PrimaryContact {
   fullName: string;
   position?: string | null;
+  salutationPrefix?: 'Sr.' | 'Sra.';
+}
+
+export interface RecipientData {
+  fullName: string;
+  position: string | null;
+  salutationPrefix: 'Sr.' | 'Sra.';
+  isCustom: boolean;
+  contactId?: string | null;
 }
 
 export interface EntityInfo {
