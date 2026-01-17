@@ -814,8 +814,6 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
             data={previewData}
             isGenerating={isGenerating}
             onGenerate={handleGenerate}
-            onDownload={handleDownload}
-            onSend={handleSend}
           />
         </div>
       </div>
