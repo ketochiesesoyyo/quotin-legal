@@ -17,6 +17,8 @@ import Documentos from "./pages/Documentos";
 import Servicios from "./pages/Servicios";
 import Honorarios from "./pages/Honorarios";
 import Plantillas from "./pages/Plantillas";
+import PlantillaNueva from "./pages/PlantillaNueva";
+import PlantillaEditar from "./pages/PlantillaEditar";
 import Usuarios from "./pages/Usuarios";
 import Configuracion from "./pages/Configuracion";
 import NotFound from "./pages/NotFound";
@@ -70,6 +72,8 @@ const App = () => (
           <Route path="/servicios" element={<ProtectedRoute><Servicios /></ProtectedRoute>} />
           <Route path="/honorarios" element={<ProtectedRoute><Honorarios /></ProtectedRoute>} />
           <Route path="/plantillas" element={<ProtectedRoute><Plantillas /></ProtectedRoute>} />
+          <Route path="/plantillas/nueva" element={<ProtectedRouteNoLayout><PlantillaNueva /></ProtectedRouteNoLayout>} />
+          <Route path="/plantillas/:id/editar" element={<ProtectedRouteNoLayout><PlantillaEditar /></ProtectedRouteNoLayout>} />
           <Route path="/usuarios" element={<ProtectedRoute><Usuarios /></ProtectedRoute>} />
           <Route path="/configuracion" element={<ProtectedRoute><Configuracion /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
