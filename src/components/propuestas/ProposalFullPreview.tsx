@@ -6,7 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import type { ProposalPreviewData } from "./types";
 import { useRef, useState } from "react";
 import html2canvas from "html2canvas";
@@ -127,7 +130,10 @@ export function ProposalFullPreview({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl h-[95vh] p-0 gap-0 flex flex-col">
+      <DialogContent className="max-w-5xl h-[95vh] p-0 gap-0 flex flex-col" aria-describedby={undefined}>
+        <VisuallyHidden>
+          <DialogTitle>Vista previa de propuesta</DialogTitle>
+        </VisuallyHidden>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b bg-muted/30">
           <div className="flex items-center gap-4">
