@@ -77,8 +77,10 @@ function ServiceCard({
   // Calculate subtotal for this service
   const serviceSubtotal = (showOneTimeFee ? currentFee : 0) + (showMonthlyFee ? currentMonthlyFee : 0);
 
-  // Determine if we should show price breakdown (only in per_service mode)
-  const showPriceBreakdown = pricingMode === 'per_service';
+  // Can edit fees in both per_service and summed modes
+  const canEditFees = pricingMode === 'per_service' || pricingMode === 'summed';
+  // Show individual prices only in per_service mode
+  const showIndividualPrices = pricingMode === 'per_service';
 
   return (
     <div
@@ -120,7 +122,7 @@ function ServiceCard({
           </div>
 
           {/* Price display (only visible when selected AND in per_service mode) */}
-          {item.isSelected && showPriceBreakdown && (
+          {item.isSelected && showIndividualPrices && (
             <div className="mt-3 flex items-center gap-4 flex-wrap">
               {showOneTimeFee && (
                 <div className="flex items-center gap-2">
@@ -201,8 +203,8 @@ function ServiceCard({
             </div>
           )}
 
-          {/* Fee editing collapsible (only in per_service mode) */}
-          {item.isSelected && showPriceBreakdown && (
+          {/* Fee editing collapsible (in per_service and summed modes) */}
+          {item.isSelected && canEditFees && (
             <Collapsible open={isExpanded} onOpenChange={setIsExpanded} className="mt-3">
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" size="sm" className="w-full justify-between h-8">
@@ -388,8 +390,8 @@ export function ServicesSection({
           )}
         </div>
 
-        {/* Totals summary - only show in per_service mode */}
-        {pricingMode === 'per_service' && selectedCount > 0 && (totalOneTime > 0 || totalMonthly > 0) && (
+        {/* Totals summary - show in per_service and summed modes */}
+        {(pricingMode === 'per_service' || pricingMode === 'summed') && selectedCount > 0 && (totalOneTime > 0 || totalMonthly > 0) && (
           <div className="mt-4 pt-4 border-t">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Total de servicios seleccionados:</span>
