@@ -283,6 +283,38 @@ export default function PlantillaEditar() {
     toast({ title: "Análisis rechazado - Volviendo a borrador" });
   };
 
+  // Revert to draft from reviewed/approved
+  const revertToDraftMutation = useMutation({
+    mutationFn: async () => {
+      if (!id) throw new Error("No template ID");
+
+      const { error } = await supabase
+        .from("document_templates")
+        .update({
+          status: 'draft',
+          reviewed_at: null,
+          reviewed_by: null,
+          approved_at: null,
+          approved_by: null,
+        })
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["document_templates"] });
+      queryClient.invalidateQueries({ queryKey: ["document_template", id] });
+      toast({ title: "Plantilla regresada a borrador", description: "Ahora puedes editar el contenido." });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error al revertir",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleContentChange = useCallback((text: string, html: string) => {
     setContent(text);
     setHtmlContent(html);
@@ -419,10 +451,26 @@ export default function PlantillaEditar() {
             {/* Schema preview (for reviewed, approved, active) */}
             {['reviewed', 'approved', 'active'].includes(currentStatus) && (
               <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>Schema Confirmado</CardTitle>
+                  {['reviewed', 'approved'].includes(currentStatus) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => revertToDraftMutation.mutate()}
+                      disabled={revertToDraftMutation.isPending}
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      {revertToDraftMutation.isPending ? "Revirtiendo..." : "Volver a Borrador"}
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
+                  {['reviewed', 'approved'].includes(currentStatus) && (
+                    <p className="text-sm text-muted-foreground mb-4">
+                      ¿Necesitas editar la plantilla? Haz clic en "Volver a Borrador" para desbloquear la edición.
+                    </p>
+                  )}
                   <div className="space-y-3">
                     {blocks.map((block) => (
                       <div
@@ -430,11 +478,13 @@ export default function PlantillaEditar() {
                         className={`p-3 rounded border ${
                           block.type === 'static'
                             ? 'bg-blue-50 border-blue-200'
+                            : block.type === 'dynamic'
+                            ? 'bg-purple-50 border-purple-200'
                             : 'bg-amber-50 border-amber-200'
                         }`}
                       >
                         <div className="flex items-center gap-2 text-sm font-medium mb-1">
-                          {block.type === 'static' ? '🔒 FIJO' : '📝 VARIABLE'}
+                          {block.type === 'static' ? '🔒 FIJO' : block.type === 'dynamic' ? '✨ DINÁMICO' : '📝 VARIABLE'}
                           {block.variableName && (
                             <span className="text-muted-foreground">
                               ({block.variableName})
@@ -447,6 +497,11 @@ export default function PlantillaEditar() {
                         {block.source && (
                           <p className="text-xs text-muted-foreground mt-1">
                             Fuente: {block.source}
+                          </p>
+                        )}
+                        {block.instructions && (
+                          <p className="text-xs text-purple-600 mt-1">
+                            Instrucciones: {block.instructions.substring(0, 80)}...
                           </p>
                         )}
                       </div>

@@ -43,6 +43,28 @@ interface AIAnalysisPanelProps {
   isConfirming?: boolean;
 }
 
+// Helper to translate technical reasons to human-readable text
+const translateReason = (reason: string): string => {
+  const translations: Record<string, string> = {
+    "legal_clause_detected": "Detectamos términos legales en este texto",
+    "legal_boilerplate": "Contiene cláusulas legales estándar",
+    "variable_pattern_detected": "Encontramos variables como {{nombre}}",
+    "likely_dynamic_content": "El contenido parece cambiar según el caso",
+    "default_static": "Texto estándar que no cambia",
+    "forced_static_low_confidence": "Marcado como fijo por seguridad",
+    "User-defined block type": "Tipo definido por ti",
+  };
+  
+  // Check for partial matches
+  for (const [key, translation] of Object.entries(translations)) {
+    if (reason.includes(key)) {
+      return translation;
+    }
+  }
+  
+  return reason;
+};
+
 export function AIAnalysisPanel({
   analysisResult,
   onConfirm,
@@ -210,7 +232,7 @@ export function AIAnalysisPanel({
                         )}
                       </CardTitle>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {block.reason}
+                        {translateReason(block.reason)}
                       </p>
                     </div>
                   </div>
