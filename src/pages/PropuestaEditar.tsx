@@ -12,6 +12,7 @@ import { PricingModeSelector } from "@/components/propuestas/PricingModeSelector
 import { ServicesSection } from "@/components/propuestas/ServicesSection";
 import { PricingSection } from "@/components/propuestas/PricingSection";
 import { ProposalPreview } from "@/components/propuestas/ProposalPreview";
+import { ProposalFullPreview } from "@/components/propuestas/ProposalFullPreview";
 import { RecipientSection, type RecipientData } from "@/components/propuestas/RecipientSection";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
@@ -53,6 +54,7 @@ export default function PropuestaEditar() {
   const [isPricingConfigOpen, setIsPricingConfigOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [showFullPreview, setShowFullPreview] = useState(false);
   const [recipientData, setRecipientData] = useState<RecipientData>({
     fullName: "[Nombre del Contacto]",
     position: null,
@@ -522,7 +524,13 @@ export default function PropuestaEditar() {
     setIsGenerating(true);
     await saveMutation.mutateAsync();
     setIsGenerating(false);
-    toast({ title: "Propuesta generada", description: "La propuesta ha sido guardada correctamente" });
+    setShowFullPreview(true); // Open full preview modal after saving
+  };
+
+  const handleSaveDraft = async () => {
+    setIsGenerating(true);
+    await saveMutation.mutateAsync();
+    setIsGenerating(false);
   };
 
   const handleDownload = () => {
@@ -777,6 +785,18 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
           />
         </div>
       </div>
+
+      {/* Full Preview Modal */}
+      <ProposalFullPreview
+        open={showFullPreview}
+        onOpenChange={setShowFullPreview}
+        data={previewData}
+        progress={progress}
+        isSaving={saveMutation.isPending}
+        onSaveDraft={handleSaveDraft}
+        onDownloadPDF={handleDownload}
+        onSendToClient={handleSend}
+      />
     </div>
   );
 }
