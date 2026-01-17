@@ -15,9 +15,13 @@ import { PricingSection } from "@/components/propuestas/PricingSection";
 import { ProposalPreview } from "@/components/propuestas/ProposalPreview";
 import { ProposalFullPreview } from "@/components/propuestas/ProposalFullPreview";
 import { RecipientSection, type RecipientData } from "@/components/propuestas/RecipientSection";
+import { TemplateSelector } from "@/components/propuestas/TemplateSelector";
+import { CompiledDocumentPreview, buildCompilerContext } from "@/components/propuestas/CompiledDocumentPreview";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import type { DocumentTemplate } from "@/components/plantillas/types";
 import type {
   Case,
   Client,
@@ -77,6 +81,10 @@ export default function PropuestaEditar() {
     isCustom: false,
     contactId: null,
   });
+  
+  // Document template state (Sprint 2)
+  const [selectedDocumentTemplate, setSelectedDocumentTemplate] = useState<DocumentTemplate | null>(null);
+  const [previewMode, setPreviewMode] = useState<'classic' | 'template'>('classic');
 
   // Fetch case data - refetch while AI is analyzing
   const { data: caseData, isLoading: loadingCase } = useQuery({
@@ -710,6 +718,60 @@ export default function PropuestaEditar() {
     };
   }, [client, entities, proposalBackground, services, customInitialPayment, customMonthlyRetainer, customRetainerMonths, installments, retainerStartDescription, canCancelWithoutPenalty, pricingMode, firmSettings, recipientData, generatedContent]);
 
+  // Build compiler context for template-based preview
+  const compilerContext = useMemo(() => {
+    return buildCompilerContext({
+      client: client ? {
+        group_name: client.group_name,
+        alias: client.alias || undefined,
+        industry: client.industry || undefined,
+        annual_revenue: client.annual_revenue || undefined,
+        employee_count: client.employee_count || undefined,
+      } : undefined,
+      entities: entities.map(e => ({
+        legal_name: e.legal_name,
+        rfc: e.rfc || undefined,
+      })),
+      services: services
+        .filter(s => s.isSelected)
+        .map(s => ({
+          service: {
+            id: s.service.id,
+            name: s.service.name,
+            description: s.service.description || undefined,
+            objectives_template: s.service.objectives_template || undefined,
+            deliverables_template: s.service.deliverables_template || undefined,
+            standard_text: s.service.standard_text || undefined,
+          },
+          customFee: s.customFee,
+          customMonthlyFee: s.customMonthlyFee,
+        })),
+      caseData: {
+        title: caseData?.title || '',
+        notes: caseData?.notes || undefined,
+      },
+      background: proposalBackground,
+      recipientName: recipientData.fullName,
+      recipientPosition: recipientData.position || undefined,
+      pricing: {
+        initialPayment: customInitialPayment,
+        monthlyRetainer: customMonthlyRetainer,
+        retainerMonths: customRetainerMonths,
+      },
+      firmSettings: firmSettings ? {
+        name: firmSettings.name,
+        logo_url: firmSettings.logo_url || undefined,
+        address: firmSettings.address || undefined,
+        phone: firmSettings.phone || undefined,
+        email: firmSettings.email || undefined,
+        website: firmSettings.website || undefined,
+        closing_text: firmSettings.closing_text || undefined,
+        guarantees_text: firmSettings.guarantees_text || undefined,
+        disclaimers_text: firmSettings.disclaimers_text || undefined,
+      } : undefined,
+    });
+  }, [client, entities, services, caseData, proposalBackground, recipientData, customInitialPayment, customMonthlyRetainer, customRetainerMonths, firmSettings]);
+
   // Validated data for display
   const validatedData = useMemo(() => ({
     rfc: entities[0]?.rfc || null,
@@ -847,6 +909,18 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
               {/* Validated Data */}
               <ValidatedDataSection data={validatedData} />
 
+              {/* Document Template Selector (Sprint 2) */}
+              <TemplateSelector
+                selectedTemplateId={selectedDocumentTemplate?.id || null}
+                onSelectTemplate={(template) => {
+                  setSelectedDocumentTemplate(template);
+                  // Switch to template preview mode when a template is selected
+                  if (template) {
+                    setPreviewMode('template');
+                  }
+                }}
+              />
+
               {/* Pricing Mode Selector - always visible */}
               <PricingModeSelector
                 pricingMode={pricingMode}
@@ -887,13 +961,38 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
           </ScrollArea>
         </div>
 
-        {/* Right Panel - Preview */}
-        <div className="w-1/2 p-6">
-          <ProposalPreview
-            data={previewData}
-            isGenerating={isGenerating}
-            onGenerate={handleGenerate}
-          />
+        {/* Right Panel - Preview with Tabs */}
+        <div className="w-1/2 p-6 flex flex-col">
+          <Tabs value={previewMode} onValueChange={(v) => setPreviewMode(v as 'classic' | 'template')} className="flex-1 flex flex-col">
+            <TabsList className="mb-4">
+              <TabsTrigger value="classic">Vista Clásica</TabsTrigger>
+              <TabsTrigger value="template" disabled={!selectedDocumentTemplate}>
+                Plantilla Compilada
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="classic" className="flex-1 m-0">
+              <ProposalPreview
+                data={previewData}
+                isGenerating={isGenerating}
+                onGenerate={handleGenerate}
+              />
+            </TabsContent>
+            <TabsContent value="template" className="flex-1 m-0">
+              {selectedDocumentTemplate ? (
+                <div className="h-full border rounded-lg overflow-hidden bg-card">
+                  <CompiledDocumentPreview
+                    template={selectedDocumentTemplate}
+                    context={compilerContext}
+                    showDebug={true}
+                  />
+                </div>
+              ) : (
+                <div className="h-full flex items-center justify-center text-muted-foreground">
+                  Selecciona una plantilla para ver la vista previa compilada
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 
