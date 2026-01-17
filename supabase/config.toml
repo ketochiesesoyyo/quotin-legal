@@ -2,3 +2,6 @@ project_id = "eaqfncdbzfequjqyxajs"
 
 [functions.analyze-proposal]
 verify_jwt = false
+
+[functions.generate-proposal-content]
+verify_jwt = false

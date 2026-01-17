@@ -1,8 +1,9 @@
-import { FileText, Eye, ArrowRight } from "lucide-react";
+import { FileText, Eye, ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import type { ProposalPreviewData } from "./types";
+import { Badge } from "@/components/ui/badge";
+import type { ProposalPreviewData, ServiceDescription } from "./types";
 
 interface ProposalPreviewProps {
   data: ProposalPreviewData;
@@ -10,7 +11,7 @@ interface ProposalPreviewProps {
   onGenerate: () => void;
 }
 
-// Fixed transition texts - could be moved to firm_settings later
+// Fixed transition texts - used as fallbacks when AI content not generated
 const FIXED_TEXTS = {
   introSaludo: (firmName: string, serviceType: string) =>
     `Con el gusto de saludarle, en primer lugar, agradecemos la oportunidad de considerar a ${firmName} como sus asesores legales en relación con ${serviceType}.`,
@@ -105,6 +106,12 @@ export function ProposalPreview({
 }: ProposalPreviewProps) {
   const hasContent = data.background || data.selectedServices.length > 0;
   const firmName = data.firmSettings?.name || "Nuestra Firma";
+  const hasGeneratedContent = !!data.generatedContent;
+  
+  // Helper to get generated description for a service
+  const getGeneratedServiceDescription = (serviceId: string): ServiceDescription | undefined => {
+    return data.generatedContent?.serviceDescriptions?.find(sd => sd.serviceId === serviceId);
+  };
 
   return (
     <div className="h-full flex flex-col bg-card border rounded-lg overflow-hidden">
@@ -234,18 +241,46 @@ export function ProposalPreview({
                       Empresas requieren la implementación de los siguientes servicios:
                     </p>
                     <div className="space-y-4 mb-4">
-                      {data.selectedServices.map((item, index) => (
-                        <div key={item.service.id} className="pl-4">
-                          <p className="text-sm">
-                            <strong>{String.fromCharCode(97 + index)}) {item.service.name}:</strong>{" "}
-                            {item.customText || item.service.standard_text || item.service.description}
-                          </p>
-                        </div>
-                      ))}
+                      {data.selectedServices.map((item, index) => {
+                        const generatedDesc = getGeneratedServiceDescription(item.service.id);
+                        const displayText = generatedDesc?.expandedText || item.customText || item.service.standard_text || item.service.description;
+                        
+                        return (
+                          <div key={item.service.id} className="pl-4">
+                            <p className="text-sm">
+                              <strong>{String.fromCharCode(97 + index)}) {item.service.name}:</strong>{" "}
+                              {displayText}
+                            </p>
+                            {/* Show AI-generated objectives if available */}
+                            {generatedDesc?.objectives && generatedDesc.objectives.length > 0 && (
+                              <div className="mt-2 ml-4">
+                                <p className="text-xs text-muted-foreground mb-1">Objetivos:</p>
+                                <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
+                                  {generatedDesc.objectives.map((obj, idx) => (
+                                    <li key={idx}>{obj}</li>
+                                  ))}
+                                </ol>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
 
-                    {/* Transition text */}
-                    <p className="text-sm leading-relaxed mb-4">{FIXED_TEXTS.transicion}</p>
+                    {/* AI-generated badge */}
+                    {hasGeneratedContent && (
+                      <div className="flex items-center gap-2 mb-4">
+                        <Badge variant="outline" className="text-xs gap-1 text-primary border-primary/30">
+                          <Sparkles className="h-3 w-3" />
+                          Contenido generado con IA
+                        </Badge>
+                      </div>
+                    )}
+
+                    {/* Transition text - use generated or fallback */}
+                    <p className="text-sm leading-relaxed mb-4">
+                      {data.generatedContent?.transitionText || FIXED_TEXTS.transicion}
+                    </p>
 
                     {/* Participation intro */}
                     <p className="text-sm leading-relaxed mb-4">{FIXED_TEXTS.introParticipacion}</p>

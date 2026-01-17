@@ -91,6 +91,21 @@ export interface RecipientData {
   contactId?: string | null;
 }
 
+// AI-generated proposal content
+export interface ServiceDescription {
+  serviceId: string;
+  expandedText: string;
+  objectives: string[];
+  deliverables?: string[];
+}
+
+export interface GeneratedProposalContent {
+  transitionText: string;
+  serviceDescriptions: ServiceDescription[];
+  closingText: string;
+  generatedAt: string;
+}
+
 export interface EntityInfo {
   legalName: string;
   rfc?: string | null;
@@ -148,4 +163,7 @@ export interface ProposalPreviewData {
   
   // Firm settings
   firmSettings?: FirmSettings;
+  
+  // AI-generated content (optional - generated on demand)
+  generatedContent?: GeneratedProposalContent;
 }
