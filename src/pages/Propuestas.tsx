@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -124,6 +125,7 @@ const NEED_TYPES = [
 ];
 
 export default function Propuestas() {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedCase, setSelectedCase] = useState<(Case & { ai_analysis?: AIAnalysis }) | null>(null);
   const [viewProposalCase, setViewProposalCase] = useState<Case | null>(null);
@@ -198,22 +200,27 @@ export default function Propuestas() {
     },
     onSuccess: async (newCase) => {
       queryClient.invalidateQueries({ queryKey: ["cases"] });
-      toast({ 
-        title: "Propuesta creada", 
-        description: "La IA está analizando las notas..." 
-      });
       setIsOpen(false);
       setFormData({ client_id: "", need_type: "", notes: "" });
       
-      // Trigger AI analysis
-      analyzeProposal(newCase.id);
+      // Navigate to editor immediately - analysis will run in background
+      toast({ 
+        title: "Propuesta creada", 
+        description: "Analizando con IA... Redirigiendo al editor." 
+      });
+      
+      // Start AI analysis in background
+      analyzeProposalInBackground(newCase.id);
+      
+      // Navigate to editor
+      navigate(`/propuestas/${newCase.id}/editar`);
     },
     onError: (error) => {
       toast({ title: "Error al crear propuesta", description: error.message, variant: "destructive" });
     },
   });
 
-  const analyzeProposal = async (caseId: string) => {
+  const analyzeProposalInBackground = async (caseId: string) => {
     try {
       const response = await supabase.functions.invoke("analyze-proposal", {
         body: { caseId },
@@ -222,15 +229,15 @@ export default function Propuestas() {
       if (response.error) {
         console.error("Analysis error:", response.error);
         toast({ 
-          title: "Error en análisis", 
+          title: "Error en análisis IA", 
           description: response.error.message || "No se pudo analizar la propuesta",
           variant: "destructive" 
         });
       } else {
-        queryClient.invalidateQueries({ queryKey: ["cases"] });
+        queryClient.invalidateQueries({ queryKey: ["case", caseId] });
         toast({ 
-          title: "Análisis completado", 
-          description: "La IA ha procesado las notas y actualizado la propuesta" 
+          title: "Análisis IA completado", 
+          description: "La propuesta ha sido actualizada con las sugerencias de la IA" 
         });
       }
     } catch (error) {

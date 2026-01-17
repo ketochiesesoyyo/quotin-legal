@@ -45,8 +45,8 @@ serve(async (req) => {
           group_name,
           alias,
           notes,
-          contacts (*),
-          entities (*)
+          client_contacts (*),
+          client_entities (*)
         )
       `)
       .eq("id", caseId)
@@ -102,8 +102,8 @@ INFORMACIÓN DEL CLIENTE:
 - Nombre: ${caseData.clients?.group_name || 'No especificado'}
 - Alias: ${caseData.clients?.alias || 'No especificado'}
 - Notas del cliente: ${caseData.clients?.notes || 'Sin notas'}
-- Contactos registrados: ${caseData.clients?.contacts?.length || 0}
-- Entidades registradas: ${caseData.clients?.entities?.length || 0}
+- Contactos registrados: ${caseData.clients?.client_contacts?.length || 0}
+- Entidades registradas: ${caseData.clients?.client_entities?.length || 0}
 
 Por favor proporciona el análisis estructurado.`;
 

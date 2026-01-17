@@ -63,7 +63,7 @@ export default function PropuestaEditar() {
     contactId: null,
   });
 
-  // Fetch case data
+  // Fetch case data - refetch while AI is analyzing
   const { data: caseData, isLoading: loadingCase } = useQuery({
     queryKey: ["case", id],
     queryFn: async () => {
@@ -76,6 +76,14 @@ export default function PropuestaEditar() {
       return data as Case & { ai_analysis?: AIAnalysis };
     },
     enabled: !!id,
+    // Refetch every 2 seconds while AI is still analyzing
+    refetchInterval: (query) => {
+      const data = query.state.data as (Case & { ai_analysis?: AIAnalysis }) | undefined;
+      if (data?.ai_status === 'pending' || data?.ai_status === 'analyzing') {
+        return 2000; // Poll every 2 seconds
+      }
+      return false; // Stop polling when complete
+    },
   });
 
   // Fetch client
