@@ -53,13 +53,16 @@ const LEGAL_STATIC_KEYWORDS = [
   "ley aplicable",
 ];
 
-// Variable patterns
+// Variable patterns - using functions to avoid regex lastIndex issues
 const VARIABLE_PATTERNS = [
-  { pattern: /\{\{(\w+)\}\}/g, type: "template_variable" },
-  { pattern: /\[nombre[_\s]?cliente\]/gi, type: "client_name" },
-  { pattern: /\[fecha\]/gi, type: "date" },
-  { pattern: /\[monto\]/gi, type: "amount" },
-  { pattern: /estimad[oa]\s+(señor|cliente|licenciado)/gi, type: "salutation" },
+  { pattern: /\{\{[\w.]+\}\}/, type: "template_variable", extract: /\{\{([\w.]+)\}\}/ },
+  { pattern: /\[nombre[_\s]?cliente\]/i, type: "client_name", source: "client.group_name" },
+  { pattern: /\[fecha\]/i, type: "date", source: "proposal.date" },
+  { pattern: /\[monto\]/i, type: "amount", source: "proposal.total_fee" },
+  { pattern: /estimad[oa]\s+(señor|cliente|licenciado)/i, type: "salutation", source: "client.contact_name" },
+  { pattern: /{{client\.[\w]+}}/i, type: "client_var" },
+  { pattern: /{{service\.[\w]+}}/i, type: "service_var" },
+  { pattern: /{{proposal\.[\w]+}}/i, type: "proposal_var" },
 ];
 
 Deno.serve(async (req) => {
@@ -91,9 +94,9 @@ Deno.serve(async (req) => {
           block.content.toLowerCase().includes(keyword.toLowerCase())
         );
 
-        // Check for variable patterns
+        // Check for variable patterns - use match() instead of test() to avoid lastIndex issues
         const hasVariablePattern = VARIABLE_PATTERNS.some((p) =>
-          p.pattern.test(block.content)
+          block.content.match(p.pattern) !== null
         );
 
         let suggestedType: "static" | "variable" = block.type as "static" | "variable";
@@ -112,11 +115,11 @@ Deno.serve(async (req) => {
           confidence = 0.85;
           reason = "variable_pattern_detected";
           
-          // Try to extract variable name
-          const match = block.content.match(/\{\{(\w+)\}\}/);
-          if (match) {
-            suggestedVariableName = match[1];
-            suggestedSource = `context.${match[1]}`;
+          // Try to extract variable name from {{variable.name}} patterns
+          const varMatch = block.content.match(/\{\{([\w.]+)\}\}/);
+          if (varMatch) {
+            suggestedVariableName = varMatch[1].replace('.', '_');
+            suggestedSource = varMatch[1];
           }
         }
 
@@ -183,19 +186,21 @@ Deno.serve(async (req) => {
       let variableName: string | undefined;
       let variableSource: string | undefined;
 
-      for (const { pattern, type } of VARIABLE_PATTERNS) {
-        const match = paragraph.match(pattern);
+      for (const patternDef of VARIABLE_PATTERNS) {
+        const match = paragraph.match(patternDef.pattern);
         if (match) {
           hasVariablePattern = true;
-          variableName = type;
           
-          // Map to sources
-          if (type === "client_name") {
-            variableSource = "client.group_name";
-            variableName = "client_name";
-          } else if (type === "date") {
-            variableSource = "proposal.date";
-            variableName = "proposal_date";
+          // Extract variable info from {{var.name}} patterns
+          const varMatch = paragraph.match(/\{\{([\w.]+)\}\}/);
+          if (varMatch) {
+            variableSource = varMatch[1];
+            variableName = varMatch[1].replace('.', '_');
+          } else if ('source' in patternDef) {
+            variableSource = patternDef.source as string;
+            variableName = patternDef.type;
+          } else {
+            variableName = patternDef.type;
           }
           break;
         }
