@@ -4,19 +4,21 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Lock, Variable, Bold, Italic, List, AlignLeft, AlignCenter, Heading1, Heading2 } from "lucide-react";
+import { Lock, Variable, Sparkles, Bold, Italic, List, AlignLeft, AlignCenter, Heading1, Heading2 } from "lucide-react";
 import type { Editor } from "@tiptap/react";
 
 interface BlockMarkerToolbarProps {
   editor: Editor | null;
   onMarkAsStatic: () => void;
   onMarkAsVariable: () => void;
+  onMarkAsDynamic: () => void;
 }
 
 export function BlockMarkerToolbar({ 
   editor, 
   onMarkAsStatic, 
-  onMarkAsVariable 
+  onMarkAsVariable,
+  onMarkAsDynamic,
 }: BlockMarkerToolbarProps) {
   if (!editor) return null;
 
@@ -61,6 +63,25 @@ export function BlockMarkerToolbar({
           </TooltipTrigger>
           <TooltipContent>
             <p>Marcar como variable (se llena con datos del sistema)</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onMarkAsDynamic}
+              disabled={!hasSelection}
+              className="gap-1 border-purple-300 text-purple-700 hover:bg-purple-50"
+            >
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden sm:inline">Dinámico</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Marcar como dinámico (la IA genera contenido personalizado)</p>
           </TooltipContent>
         </Tooltip>
       </div>
@@ -172,9 +193,17 @@ export function BlockMarkerToolbar({
         </Tooltip>
       </div>
 
-      {/* Info about dynamic blocks */}
-      <div className="ml-auto text-xs text-muted-foreground hidden lg:block">
-        💡 Usa "Dinámico" para bloques que la IA generará al compilar
+      {/* Legend */}
+      <div className="ml-auto text-xs text-muted-foreground hidden lg:flex items-center gap-3">
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-blue-400" /> Fijo
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-amber-400" /> Variable
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-purple-400" /> Dinámico (IA)
+        </span>
       </div>
     </div>
   );
