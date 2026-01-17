@@ -19,6 +19,7 @@ import {
   Check,
   Lock,
   Variable,
+  Sparkles,
   ChevronDown,
   ChevronUp,
   ArrowLeft,
@@ -26,12 +27,13 @@ import {
 import type { AIAnalysisResult, AIAnalysisBlock, BlockType } from "./types";
 import { VARIABLE_SOURCES } from "./types";
 
-interface BlockDecision {
+export interface BlockDecision {
   block_id: string;
   accepted: boolean;
   modified_type?: BlockType;
   variable_name?: string;
   source?: string;
+  instructions?: string;
 }
 
 interface AIAnalysisPanelProps {
@@ -175,20 +177,24 @@ export function AIAnalysisPanel({
               }`}
             >
               <CardHeader className="py-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    {decision.modified_type === "static" ? (
-                      <div className="h-8 w-8 rounded bg-blue-100 flex items-center justify-center">
-                        <Lock className="h-4 w-4 text-blue-600" />
-                      </div>
-                    ) : (
-                      <div className="h-8 w-8 rounded bg-amber-100 flex items-center justify-center">
-                        <Variable className="h-4 w-4 text-amber-600" />
-                      </div>
-                    )}
-                    <div>
-                      <CardTitle className="text-sm">
-                        {decision.modified_type === "static" ? "FIJO" : "VARIABLE"}
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      {decision.modified_type === "static" ? (
+                        <div className="h-8 w-8 rounded bg-blue-100 flex items-center justify-center">
+                          <Lock className="h-4 w-4 text-blue-600" />
+                        </div>
+                      ) : decision.modified_type === "dynamic" ? (
+                        <div className="h-8 w-8 rounded bg-purple-100 flex items-center justify-center">
+                          <Sparkles className="h-4 w-4 text-purple-600" />
+                        </div>
+                      ) : (
+                        <div className="h-8 w-8 rounded bg-amber-100 flex items-center justify-center">
+                          <Variable className="h-4 w-4 text-amber-600" />
+                        </div>
+                      )}
+                      <div>
+                        <CardTitle className="text-sm">
+                          {decision.modified_type === "static" ? "FIJO" : decision.modified_type === "dynamic" ? "DINÁMICO" : "VARIABLE"}
                         <Badge
                           variant="outline"
                           className={`ml-2 ${confidenceBg(block.confidence)}`}
@@ -251,6 +257,18 @@ export function AIAnalysisPanel({
                       <Variable className="h-4 w-4 mr-1" />
                       Variable
                     </Button>
+                    <Button
+                      type="button"
+                      variant={decision.modified_type === "dynamic" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() =>
+                        updateDecision(block.block_id, { modified_type: "dynamic" })
+                      }
+                      className="flex-1"
+                    >
+                      <Sparkles className="h-4 w-4 mr-1" />
+                      Dinámico
+                    </Button>
                   </div>
 
                   {/* Variable configuration */}
@@ -287,6 +305,28 @@ export function AIAnalysisPanel({
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Dynamic block configuration */}
+                  {decision.modified_type === "dynamic" && (
+                    <div className="p-3 bg-purple-50 rounded border border-purple-200">
+                      <div className="space-y-2">
+                        <Label className="text-purple-800">Instrucciones para la IA</Label>
+                        <textarea
+                          value={decision.instructions || ""}
+                          onChange={(e) =>
+                            updateDecision(block.block_id, {
+                              instructions: e.target.value,
+                            })
+                          }
+                          placeholder="Ej: Redacta los antecedentes del caso basándote en la información del cliente y los servicios solicitados. Incluye contexto sobre la industria y necesidades específicas."
+                          className="w-full min-h-[80px] p-2 text-sm border rounded-md resize-y bg-white"
+                        />
+                        <p className="text-xs text-purple-600">
+                          La IA generará contenido dinámico basándose en estas instrucciones y el contexto del caso.
+                        </p>
                       </div>
                     </div>
                   )}
