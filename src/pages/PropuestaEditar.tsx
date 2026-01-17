@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getErrorMessage } from "@/lib/error-utils";
 import { Loader2 } from "lucide-react";
 import { EditorHeader } from "@/components/propuestas/EditorHeader";
 import { ProgressIndicator } from "@/components/propuestas/ProgressIndicator";
@@ -39,6 +40,9 @@ export default function PropuestaEditar() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Track AI status for polling
+  const [aiStatusForPolling, setAiStatusForPolling] = useState<string | null>(null);
 
   // State for editor
   const [userNotes, setUserNotes] = useState(""); // Notas crudas del usuario
@@ -81,17 +85,16 @@ export default function PropuestaEditar() {
         .eq("id", id)
         .single();
       if (error) throw error;
+      // Update polling status when data is fetched
+      setAiStatusForPolling(data?.ai_status ?? null);
       return data as Case & { ai_analysis?: AIAnalysis };
     },
     enabled: !!id,
     // Refetch every 2 seconds while AI is still analyzing
-    refetchInterval: (query) => {
-      const data = query.state.data as (Case & { ai_analysis?: AIAnalysis }) | undefined;
-      if (data?.ai_status === 'pending' || data?.ai_status === 'analyzing') {
-        return 2000; // Poll every 2 seconds
-      }
-      return false; // Stop polling when complete
-    },
+    refetchInterval: 
+      aiStatusForPolling === 'pending' || aiStatusForPolling === 'analyzing'
+        ? 2000
+        : false,
   });
 
   // Fetch client
@@ -544,7 +547,7 @@ export default function PropuestaEditar() {
     onError: (error) => {
       toast({
         title: "Error al guardar",
-        description: error.message,
+        description: getErrorMessage(error),
         variant: "destructive",
       });
     },
@@ -718,10 +721,10 @@ export default function PropuestaEditar() {
                     
                     toast({ title: "Notas guardadas", description: "Se ha creado una versión en el historial" });
                     queryClient.invalidateQueries({ queryKey: ["case", id] });
-                  } catch (error: any) {
+                  } catch (error) {
                     toast({
                       title: "Error al guardar notas",
-                      description: error.message,
+                      description: getErrorMessage(error),
                       variant: "destructive",
                     });
                   } finally {

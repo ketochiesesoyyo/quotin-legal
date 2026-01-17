@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { getErrorMessage } from "@/lib/error-utils";
 import { Plus, FileText, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
@@ -80,7 +81,7 @@ export default function Plantillas() {
       resetForm();
     },
     onError: (error) => {
-      toast({ title: "Error al crear plantilla", description: error.message, variant: "destructive" });
+      toast({ title: "Error al crear plantilla", description: getErrorMessage(error), variant: "destructive" });
     },
   });
 
@@ -104,7 +105,7 @@ export default function Plantillas() {
       resetForm();
     },
     onError: (error) => {
-      toast({ title: "Error al actualizar plantilla", description: error.message, variant: "destructive" });
+      toast({ title: "Error al actualizar plantilla", description: getErrorMessage(error), variant: "destructive" });
     },
   });
 
@@ -118,7 +119,7 @@ export default function Plantillas() {
       toast({ title: "Plantilla eliminada exitosamente" });
     },
     onError: (error) => {
-      toast({ title: "Error al eliminar plantilla", description: error.message, variant: "destructive" });
+      toast({ title: "Error al eliminar plantilla", description: getErrorMessage(error), variant: "destructive" });
     },
   });
 

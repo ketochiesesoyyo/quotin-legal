@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { getErrorMessage } from "@/lib/error-utils";
 import { 
   Plus, 
   FileText, 
@@ -218,7 +219,7 @@ export default function Propuestas() {
       navigate(`/propuestas/${newCase.id}/editar`);
     },
     onError: (error) => {
-      toast({ title: "Error al crear propuesta", description: error.message, variant: "destructive" });
+      toast({ title: "Error al crear propuesta", description: getErrorMessage(error), variant: "destructive" });
     },
   });
 
@@ -263,7 +264,7 @@ export default function Propuestas() {
       setStatusChangeCase(null);
     },
     onError: (error) => {
-      toast({ title: "Error al actualizar estado", description: error.message, variant: "destructive" });
+      toast({ title: "Error al actualizar estado", description: getErrorMessage(error), variant: "destructive" });
     },
   });
 
@@ -277,7 +278,7 @@ export default function Propuestas() {
       toast({ title: "Propuesta archivada", description: "La propuesta ha sido archivada correctamente" });
     },
     onError: (error) => {
-      toast({ title: "Error al archivar", description: error.message, variant: "destructive" });
+      toast({ title: "Error al archivar", description: getErrorMessage(error), variant: "destructive" });
     },
   });
 

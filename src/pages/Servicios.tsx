@@ -27,6 +27,7 @@ import { TableSearch } from "@/components/ui/table-search";
 import { useTableSort } from "@/hooks/useTableSort";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { getErrorMessage } from "@/lib/error-utils";
 import { Plus, Briefcase, MoreHorizontal, Pencil, Trash2, DollarSign } from "lucide-react";
 import {
   Select,
@@ -99,7 +100,7 @@ export default function Servicios() {
       resetForm();
     },
     onError: (error) => {
-      toast({ title: "Error al crear servicio", description: error.message, variant: "destructive" });
+      toast({ title: "Error al crear servicio", description: getErrorMessage(error), variant: "destructive" });
     },
   });
 
@@ -127,7 +128,7 @@ export default function Servicios() {
       resetForm();
     },
     onError: (error) => {
-      toast({ title: "Error al actualizar servicio", description: error.message, variant: "destructive" });
+      toast({ title: "Error al actualizar servicio", description: getErrorMessage(error), variant: "destructive" });
     },
   });
 
@@ -141,7 +142,7 @@ export default function Servicios() {
       toast({ title: "Servicio eliminado exitosamente" });
     },
     onError: (error) => {
-      toast({ title: "Error al eliminar servicio", description: error.message, variant: "destructive" });
+      toast({ title: "Error al eliminar servicio", description: getErrorMessage(error), variant: "destructive" });
     },
   });
 

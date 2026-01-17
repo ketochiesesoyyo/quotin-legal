@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { getErrorMessage } from "@/lib/error-utils";
 import { Building2, Save } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -96,7 +97,7 @@ export default function Configuracion() {
       toast({ title: "Configuración guardada exitosamente" });
     },
     onError: (error) => {
-      toast({ title: "Error al guardar configuración", description: error.message, variant: "destructive" });
+      toast({ title: "Error al guardar configuración", description: getErrorMessage(error), variant: "destructive" });
     },
   });
 
