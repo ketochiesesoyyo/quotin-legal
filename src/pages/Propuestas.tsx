@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,7 +31,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
@@ -58,6 +57,9 @@ import {
   FileEdit
 } from "lucide-react";
 import type { Tables, Enums } from "@/integrations/supabase/types";
+import { useTableSort } from "@/hooks/useTableSort";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import { TableSearch } from "@/components/ui/table-search";
 
 type Case = Tables<"cases">;
 type Client = Tables<"clients">;
@@ -324,6 +326,22 @@ export default function Propuestas() {
     }).format(amount);
   };
 
+  // Prepare data for sorting with computed fields
+  const casesWithComputedFields = useMemo(() => {
+    return cases?.map((caseItem) => ({
+      ...caseItem,
+      clientName: getClientName(caseItem.client_id),
+      assignedName: getAssignedUserName(caseItem.assigned_to),
+      servicesCount: getServicesCount(caseItem.id),
+      totalCost: calculateTotalCost(caseItem),
+    }));
+  }, [cases, clients, profiles, caseServices]);
+
+  const { sortConfig, handleSort, searchQuery, setSearchQuery, filteredData } = useTableSort(
+    casesWithComputedFields,
+    { key: "created_at", direction: "desc" }
+  );
+
   // KPI calculations
   const getProposalsByStatus = (status: ProposalStatus) => {
     return cases?.filter((c) => mapCaseStatusToProposalStatus(c.status) === status) || [];
@@ -508,30 +526,86 @@ export default function Propuestas() {
 
       {/* Proposals Table */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Todas las Propuestas</CardTitle>
+          <TableSearch
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Buscar propuesta..."
+          />
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : cases && cases.length > 0 ? (
+          ) : filteredData && filteredData.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Propuesta</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Tipo de Necesidad</TableHead>
-                  <TableHead className="text-center">Servicios</TableHead>
-                  <TableHead className="text-right">Costo Total</TableHead>
-                  <TableHead>Estatus</TableHead>
-                  <TableHead>Responsable</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
+                  <SortableTableHead
+                    sortKey="title"
+                    currentSortKey={sortConfig.key}
+                    currentDirection={sortConfig.direction}
+                    onSort={handleSort}
+                  >
+                    Propuesta
+                  </SortableTableHead>
+                  <SortableTableHead
+                    sortKey="clientName"
+                    currentSortKey={sortConfig.key}
+                    currentDirection={sortConfig.direction}
+                    onSort={handleSort}
+                  >
+                    Cliente
+                  </SortableTableHead>
+                  <SortableTableHead
+                    sortKey="need_type"
+                    currentSortKey={sortConfig.key}
+                    currentDirection={sortConfig.direction}
+                    onSort={handleSort}
+                  >
+                    Tipo de Necesidad
+                  </SortableTableHead>
+                  <SortableTableHead
+                    sortKey="servicesCount"
+                    currentSortKey={sortConfig.key}
+                    currentDirection={sortConfig.direction}
+                    onSort={handleSort}
+                    className="text-center"
+                  >
+                    Servicios
+                  </SortableTableHead>
+                  <SortableTableHead
+                    sortKey="totalCost"
+                    currentSortKey={sortConfig.key}
+                    currentDirection={sortConfig.direction}
+                    onSort={handleSort}
+                    className="text-right"
+                  >
+                    Costo Total
+                  </SortableTableHead>
+                  <SortableTableHead
+                    sortKey="status"
+                    currentSortKey={sortConfig.key}
+                    currentDirection={sortConfig.direction}
+                    onSort={handleSort}
+                  >
+                    Estatus
+                  </SortableTableHead>
+                  <SortableTableHead
+                    sortKey="assignedName"
+                    currentSortKey={sortConfig.key}
+                    currentDirection={sortConfig.direction}
+                    onSort={handleSort}
+                  >
+                    Responsable
+                  </SortableTableHead>
+                  <th className="w-[50px]"></th>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {cases.map((caseItem) => {
+                {filteredData.map((caseItem) => {
                   const proposalStatus = mapCaseStatusToProposalStatus(caseItem.status);
                   const statusConfig = PROPOSAL_STATUS_CONFIG[proposalStatus];
                   const isDraft = proposalStatus === "draft";
@@ -544,7 +618,7 @@ export default function Propuestas() {
                           {caseItem.title}
                         </div>
                       </TableCell>
-                      <TableCell>{getClientName(caseItem.client_id)}</TableCell>
+                      <TableCell>{caseItem.clientName}</TableCell>
                       <TableCell>
                         {caseItem.need_type ? (
                           <Badge variant="outline">{caseItem.need_type}</Badge>
@@ -553,10 +627,10 @@ export default function Propuestas() {
                         )}
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge variant="secondary">{getServicesCount(caseItem.id)}</Badge>
+                        <Badge variant="secondary">{caseItem.servicesCount}</Badge>
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        {formatCurrency(calculateTotalCost(caseItem))}
+                        {formatCurrency(caseItem.totalCost)}
                       </TableCell>
                       <TableCell>
                         <Badge className={statusConfig.color}>
@@ -567,7 +641,7 @@ export default function Propuestas() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm">{getAssignedUserName(caseItem.assigned_to)}</span>
+                        <span className="text-sm">{caseItem.assignedName}</span>
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
