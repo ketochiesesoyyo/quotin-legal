@@ -193,18 +193,12 @@ export function BlockMarkerToolbar({
         </Tooltip>
       </div>
 
-      {/* Legend */}
-      <div className="ml-auto text-xs text-muted-foreground hidden lg:flex items-center gap-3">
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-blue-400" /> Fijo
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-amber-400" /> Variable
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-purple-400" /> Dinámico (IA)
-        </span>
-      </div>
+      {/* Selection hint */}
+      {!hasSelection && (
+        <div className="ml-auto text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded hidden sm:block">
+          💡 Selecciona texto para marcar bloques
+        </div>
+      )}
     </div>
   );
 }

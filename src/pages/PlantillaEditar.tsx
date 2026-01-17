@@ -22,6 +22,7 @@ import type {
   DocumentTemplate 
 } from "@/components/plantillas/types";
 import { ArrowLeft, FileText, Loader2 } from "lucide-react";
+import { BlockTypeGuide } from "@/components/plantillas/BlockTypeGuide";
 
 export default function PlantillaEditar() {
   const { id } = useParams<{ id: string }>();
@@ -517,10 +518,19 @@ export default function PlantillaEditar() {
                         {blocks.filter((b) => b.type === "variable").length}
                       </span>
                     </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Dinámicos:</span>
+                      <span className="font-medium">
+                        {blocks.filter((b) => b.type === "dynamic").length}
+                      </span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             )}
+
+            {/* Block type guide - show when in draft mode */}
+            {currentStatus === 'draft' && <BlockTypeGuide />}
           </div>
         </div>
       </div>
