@@ -21,8 +21,14 @@ import type {
   AIAnalysisResult,
   DocumentTemplate 
 } from "@/components/plantillas/types";
-import { ArrowLeft, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, FileText, Loader2, Eye, Pencil } from "lucide-react";
 import { BlockTypeGuide } from "@/components/plantillas/BlockTypeGuide";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function PlantillaEditar() {
   const { id } = useParams<{ id: string }>();
@@ -37,6 +43,7 @@ export default function PlantillaEditar() {
   const [content, setContent] = useState("");
   const [htmlContent, setHtmlContent] = useState("");
   const [blocks, setBlocks] = useState<TemplateBlock[]>([]);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Fetch template
   const { data: template, isLoading } = useQuery({
@@ -385,18 +392,28 @@ export default function PlantillaEditar() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              {/* Edit button for reviewed/approved templates */}
-              {['reviewed', 'approved'].includes(currentStatus) && (
+            <div className="flex items-center gap-2">
+              {/* Preview button - always visible */}
+              <Button
+                variant="outline"
+                onClick={() => setShowPreview(true)}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Vista Previa
+              </Button>
+              
+              {/* Edit button for reviewed/approved/active templates */}
+              {['reviewed', 'approved', 'active'].includes(currentStatus) && (
                 <Button
-                  variant="outline"
+                  variant="default"
                   onClick={() => revertToDraftMutation.mutate()}
                   disabled={revertToDraftMutation.isPending}
                 >
-                  <FileText className="h-4 w-4 mr-2" />
+                  <Pencil className="h-4 w-4 mr-2" />
                   {revertToDraftMutation.isPending ? "Preparando..." : "Editar Plantilla"}
                 </Button>
               )}
+              
               <StatusWorkflow
                 currentStatus={currentStatus}
                 onSaveDraft={() => updateMutation.mutate()}
@@ -606,6 +623,28 @@ export default function PlantillaEditar() {
           </div>
         </div>
       </div>
+
+      {/* Preview Dialog */}
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Vista Previa: {template.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-4 p-6 bg-white border rounded-lg shadow-inner">
+            <div 
+              className="prose prose-sm max-w-none"
+              dangerouslySetInnerHTML={{ __html: htmlContent || '<p class="text-muted-foreground">Sin contenido</p>' }}
+            />
+          </div>
+          <div className="mt-4 flex justify-between items-center text-sm text-muted-foreground">
+            <span>Versión: {template.version}</span>
+            <span>{blocks.length} bloques definidos</span>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
