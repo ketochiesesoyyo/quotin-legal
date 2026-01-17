@@ -1,6 +1,3 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -72,15 +69,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error("Missing Supabase configuration");
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
     const { template_id, canonical_content, context }: AnalyzeRequest = await req.json();
 
     if (!template_id || !canonical_content) {
@@ -89,6 +77,8 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log(`Analyzing template: ${template_id}`);
 
     const text = canonical_content.text || "";
     const existingBlocks = canonical_content.blocks || [];
@@ -168,6 +158,8 @@ Deno.serve(async (req) => {
         confidence_score: Math.round(avgConfidence * 100) / 100,
         analyzed_at: new Date().toISOString(),
       };
+
+      console.log(`Analysis complete: ${detectedBlocks.length} blocks, confidence: ${result.confidence_score}`);
 
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -282,6 +274,8 @@ Deno.serve(async (req) => {
       confidence_score: Math.round(avgConfidence * 100) / 100,
       analyzed_at: new Date().toISOString(),
     };
+
+    console.log(`Analysis complete: ${detectedBlocks.length} blocks, confidence: ${result.confidence_score}`);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
