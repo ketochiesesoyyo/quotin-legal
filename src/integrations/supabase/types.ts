@@ -543,33 +543,83 @@ export type Database = {
       }
       document_templates: {
         Row: {
+          ai_instructions: Json | null
+          analysis_result: Json | null
+          analyzed_at: string | null
+          approved_at: string | null
+          approved_by: string | null
+          canonical_content: Json | null
           content: Json | null
           created_at: string
+          created_by: string | null
           description: string | null
           id: string
           is_active: boolean | null
           name: string
+          parent_template_id: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          schema_json: Json | null
+          source_type: string | null
+          status: string | null
           updated_at: string
+          version: string | null
         }
         Insert: {
+          ai_instructions?: Json | null
+          analysis_result?: Json | null
+          analyzed_at?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          canonical_content?: Json | null
           content?: Json | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           name: string
+          parent_template_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          schema_json?: Json | null
+          source_type?: string | null
+          status?: string | null
           updated_at?: string
+          version?: string | null
         }
         Update: {
+          ai_instructions?: Json | null
+          analysis_result?: Json | null
+          analyzed_at?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          canonical_content?: Json | null
           content?: Json | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
+          parent_template_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          schema_json?: Json | null
+          source_type?: string | null
+          status?: string | null
           updated_at?: string
+          version?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "document_templates_parent_template_id_fkey"
+            columns: ["parent_template_id"]
+            isOneToOne: false
+            referencedRelation: "document_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       firm_settings: {
         Row: {
