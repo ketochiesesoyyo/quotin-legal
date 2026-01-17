@@ -53,7 +53,7 @@ import {
   Eye,
   Pencil,
   ArrowRightLeft,
-  Trash2,
+  Archive,
   Send,
   FileEdit
 } from "lucide-react";
@@ -262,6 +262,20 @@ export default function Propuestas() {
     },
     onError: (error) => {
       toast({ title: "Error al actualizar estado", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const archiveProposalMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("cases").update({ status: "archivada" as CaseStatus }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cases"] });
+      toast({ title: "Propuesta archivada", description: "La propuesta ha sido archivada correctamente" });
+    },
+    onError: (error) => {
+      toast({ title: "Error al archivar", description: error.message, variant: "destructive" });
     },
   });
 
@@ -581,12 +595,12 @@ export default function Propuestas() {
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
-                              disabled
+                              onClick={() => archiveProposalMutation.mutate(caseItem.id)}
+                              disabled={archiveProposalMutation.isPending}
                               className="text-muted-foreground"
                             >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Eliminar Propuesta
-                              {/* TODO: Implementar eliminación con confirmación */}
+                              <Archive className="mr-2 h-4 w-4" />
+                              Archivar Propuesta
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
