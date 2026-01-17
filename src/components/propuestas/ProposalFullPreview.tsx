@@ -1,18 +1,26 @@
-import { FileText, Download, Send, Eye, ArrowRight } from "lucide-react";
+import { ArrowLeft, Save, Download, Send, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog";
 import type { ProposalPreviewData } from "./types";
 
-interface ProposalPreviewProps {
+interface ProposalFullPreviewProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   data: ProposalPreviewData;
-  isGenerating: boolean;
-  onGenerate: () => void;
-  onDownload: () => void;
-  onSend: () => void;
+  progress: number;
+  isSaving: boolean;
+  onSaveDraft: () => void;
+  onDownloadPDF: () => void;
+  onSendToClient: () => void;
 }
 
-// Fixed transition texts - could be moved to firm_settings later
+// Fixed transition texts
 const FIXED_TEXTS = {
   introSaludo: (firmName: string, serviceType: string) =>
     `Con el gusto de saludarle, en primer lugar, agradecemos la oportunidad de considerar a ${firmName} como sus asesores legales en relación con ${serviceType}.`,
@@ -43,100 +51,94 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
-// Helper to get salutation prefix
-const getSalutationPrefix = (fullName: string) => {
-  // Simple heuristic - could be improved
-  const firstName = fullName.split(" ")[0].toLowerCase();
-  const femaleNames = ["maria", "ana", "carmen", "laura", "patricia", "martha", "rosa", "guadalupe", "elena", "adriana"];
-  return femaleNames.some((n) => firstName.includes(n)) ? "Sra." : "Sr.";
-};
-
 // Helper to get last name
 const getLastName = (fullName: string) => {
   const parts = fullName.trim().split(" ");
-  // If more than 2 parts, take the one after first name (handling compound names)
   if (parts.length >= 2) {
-    // Try to detect common patterns
     return parts[parts.length - 2] || parts[1];
   }
   return parts[0];
 };
 
-export function ProposalPreview({
+export function ProposalFullPreview({
+  open,
+  onOpenChange,
   data,
-  isGenerating,
-  onGenerate,
-  onDownload,
-  onSend,
-}: ProposalPreviewProps) {
-  const hasContent = data.background || data.selectedServices.length > 0;
+  progress,
+  isSaving,
+  onSaveDraft,
+  onDownloadPDF,
+  onSendToClient,
+}: ProposalFullPreviewProps) {
   const firmName = data.firmSettings?.name || "Nuestra Firma";
+  const isComplete = progress >= 80;
 
   return (
-    <div className="h-full flex flex-col bg-card border rounded-lg overflow-hidden">
-      {/* Header */}
-      <div className="p-4 border-b bg-muted/30">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold flex items-center gap-2">
-            <Eye className="h-5 w-5" />
-            Vista previa
-          </h2>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={onDownload} disabled={!hasContent}>
-              <Download className="h-4 w-4 mr-1" />
-              Descargar
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-5xl h-[95vh] p-0 gap-0 flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b bg-muted/30">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Volver a editar
             </Button>
-            <Button variant="outline" size="sm" onClick={onSend} disabled={!hasContent}>
-              <Send className="h-4 w-4 mr-1" />
-              Enviar
+            <Separator orientation="vertical" className="h-6" />
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-muted-foreground" />
+              <span className="font-semibold">Vista previa final</span>
+              <Badge variant={isComplete ? "default" : "secondary"} className="ml-2">
+                {progress}% completo
+              </Badge>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={onSaveDraft} disabled={isSaving}>
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              Guardar borrador
             </Button>
           </div>
         </div>
-      </div>
 
-      {/* Preview Content */}
-      <ScrollArea className="flex-1">
-        <div className="p-6">
-          {!hasContent ? (
-            <div className="text-center py-20">
-              <FileText className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
-              <h3 className="text-lg font-medium mb-2">Vista previa vacía</h3>
-              <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                Completa las secciones del editor para ver cómo quedará la propuesta final
-              </p>
-            </div>
-          ) : (
-            <div className="prose prose-sm max-w-none dark:prose-invert">
+        {/* Content */}
+        <ScrollArea className="flex-1">
+          <div className="max-w-3xl mx-auto p-8">
+            <div className="bg-white dark:bg-card rounded-lg border shadow-sm p-8">
               {/* ============ MEMBRETE ============ */}
-              <div className="text-center mb-6">
+              <div className="text-center mb-8">
                 {data.firmSettings?.logo_url && (
                   <img
                     src={data.firmSettings.logo_url}
                     alt={firmName}
-                    className="h-14 mx-auto mb-3 object-contain"
+                    className="h-16 mx-auto mb-4 object-contain"
                   />
                 )}
+                <h1 className="text-xl font-bold text-primary">{firmName}</h1>
                 {data.firmSettings && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-sm text-muted-foreground mt-1">
                     {[data.firmSettings.phone, data.firmSettings.website]
                       .filter(Boolean)
                       .join(" | ")}
                   </p>
                 )}
                 {data.firmSettings?.address && (
-                  <p className="text-xs text-muted-foreground">{data.firmSettings.address}</p>
+                  <p className="text-sm text-muted-foreground">{data.firmSettings.address}</p>
                 )}
               </div>
 
-              <Separator className="my-4" />
+              <Separator className="my-6" />
 
               {/* ============ FECHA ============ */}
-              <div className="text-right mb-6">
+              <div className="text-right mb-8">
                 <p className="text-sm">Ciudad de México, a {data.documentDate}</p>
               </div>
 
-{/* ============ DESTINATARIO ============ */}
-              <div className="mb-6">
+              {/* ============ DESTINATARIO ============ */}
+              <div className="mb-8">
                 <p className="font-semibold text-sm uppercase">
                   {data.primaryContact?.salutationPrefix || 'Sr.'} {data.primaryContact?.fullName || "[Nombre del Contacto]"}
                 </p>
@@ -146,7 +148,7 @@ export function ProposalPreview({
                 {data.entities.length > 0 ? (
                   <div className="mt-1">
                     {data.entities.map((entity, idx) => (
-                      <p key={idx} className="text-sm">
+                      <p key={idx} className="text-sm font-medium">
                         {entity.legalName}
                       </p>
                     ))}
@@ -154,11 +156,11 @@ export function ProposalPreview({
                 ) : (
                   <p className="text-sm text-muted-foreground mt-1">[Razón Social]</p>
                 )}
-                <p className="font-semibold mt-2 text-sm">PRESENTE</p>
+                <p className="font-semibold mt-3 text-sm">PRESENTE</p>
               </div>
 
               {/* ============ SALUDO ============ */}
-              <div className="mb-6">
+              <div className="mb-8">
                 <p className="text-sm mb-4">
                   <strong>Estimado {data.primaryContact?.salutationPrefix || 'Sr.'} {getLastName(data.primaryContact?.fullName || "Apellido")}:</strong>
                 </p>
@@ -175,20 +177,18 @@ export function ProposalPreview({
                 </p>
               </div>
 
-              {/* ============ I. ANTECEDENTES Y ALCANCE DE LOS SERVICIOS ============ */}
-              <section className="mb-6">
-                <h2 className="text-base font-bold mb-4 text-primary">
+              {/* ============ I. ANTECEDENTES Y ALCANCE ============ */}
+              <section className="mb-8">
+                <h2 className="text-base font-bold mb-4 text-primary border-b pb-2">
                   I. ANTECEDENTES Y ALCANCE DE LOS SERVICIOS
                 </h2>
 
-                {/* Background / Client description */}
                 {data.background && (
                   <p className="text-sm leading-relaxed mb-4 whitespace-pre-line">
                     {data.background}
                   </p>
                 )}
 
-                {/* Client summary if no background */}
                 {!data.background && data.industry && (
                   <p className="text-sm leading-relaxed mb-4">
                     Derivado de la información que amablemente nos ha sido proporcionada, sabemos
@@ -204,16 +204,15 @@ export function ProposalPreview({
                   </p>
                 )}
 
-                {/* Services list */}
                 {data.selectedServices.length > 0 && (
                   <>
                     <p className="text-sm mb-4">
                       Finalmente, sabemos que gracias al crecimiento sostenido que han tenido, las
                       Empresas requieren la implementación de los siguientes servicios:
                     </p>
-                    <div className="space-y-4 mb-4">
+                    <div className="space-y-3 mb-4 pl-4">
                       {data.selectedServices.map((item, index) => (
-                        <div key={item.service.id} className="pl-4">
+                        <div key={item.service.id}>
                           <p className="text-sm">
                             <strong>{String.fromCharCode(97 + index)}) {item.service.name}:</strong>{" "}
                             {item.customText || item.service.standard_text || item.service.description}
@@ -222,30 +221,27 @@ export function ProposalPreview({
                       ))}
                     </div>
 
-                    {/* Transition text */}
                     <p className="text-sm leading-relaxed mb-4">{FIXED_TEXTS.transicion}</p>
-
-                    {/* Participation intro */}
-                    <p className="text-sm leading-relaxed mb-4">{FIXED_TEXTS.introParticipacion}</p>
+                    <p className="text-sm leading-relaxed">{FIXED_TEXTS.introParticipacion}</p>
                   </>
                 )}
               </section>
 
               {/* ============ II. PROPUESTA DE HONORARIOS ============ */}
               {(data.pricing.totalAmount > 0 || data.selectedServices.length > 0) && (
-                <section className="mb-6">
-                  <h2 className="text-base font-bold mb-4 text-primary">II. PROPUESTA DE HONORARIOS</h2>
+                <section className="mb-8">
+                  <h2 className="text-base font-bold mb-4 text-primary border-b pb-2">
+                    II. PROPUESTA DE HONORARIOS
+                  </h2>
 
                   <p className="text-sm leading-relaxed mb-4">{FIXED_TEXTS.introHonorarios}</p>
 
                   <div className="space-y-4 mb-4">
-                    {/* Services with description - always shown */}
                     {data.selectedServices.length > 0 && (
-                      <div className="space-y-4">
+                      <div className="space-y-3 pl-4">
                         {data.selectedServices.map((item, index) => {
                           const serviceText = item.customText || item.service.standard_text || item.service.description;
                           
-                          // For per_service mode, also show pricing
                           if (data.pricingMode === 'per_service') {
                             const feeType = item.service.fee_type || 'one_time';
                             const showOneTime = feeType === 'one_time' || feeType === 'both';
@@ -255,7 +251,7 @@ export function ProposalPreview({
                             const hasFee = (showOneTime && fee > 0) || (showMonthly && monthlyFee > 0);
 
                             return (
-                              <div key={item.service.id} className="pl-4">
+                              <div key={item.service.id}>
                                 <p className="text-sm mb-1">
                                   <strong>{String.fromCharCode(97 + index)}) {item.service.name}:</strong>
                                 </p>
@@ -284,9 +280,8 @@ export function ProposalPreview({
                             );
                           }
 
-                          // For summed and global modes, show only service name and description (no price breakdown)
                           return (
-                            <div key={item.service.id} className="pl-4">
+                            <div key={item.service.id}>
                               <p className="text-sm mb-1">
                                 <strong>{String.fromCharCode(97 + index)}) {item.service.name}:</strong>
                               </p>
@@ -301,12 +296,11 @@ export function ProposalPreview({
                       </div>
                     )}
 
-                    {/* Summary totals */}
                     {data.pricing.initialPayment > 0 && (
-                      <div className="pl-4 mt-4 pt-2 border-t border-dashed">
+                      <div className="pl-4 mt-4 pt-3 border-t border-dashed">
                         <p className="text-sm">
                           <strong>Total pago inicial:</strong>{" "}
-                          <strong>{formatCurrency(data.pricing.initialPayment)}</strong> más IVA.
+                          <strong className="text-primary">{formatCurrency(data.pricing.initialPayment)}</strong> más IVA.
                           {data.pricing.paymentSplit && data.pricing.paymentSplit !== "100" && (
                             <> Dicho honorario podrá ser cubierto en {data.pricing.paymentSplit.split("/").length} exhibiciones ({data.pricing.paymentSplit}).</>
                           )}
@@ -314,42 +308,28 @@ export function ProposalPreview({
                       </div>
                     )}
 
-                    {/* Monthly retainer */}
                     {data.pricing.monthlyRetainer > 0 && (
                       <div className="pl-4">
                         <p className="text-sm">
                           <strong>Total iguala mensual:</strong>{" "}
-                          <strong>{formatCurrency(data.pricing.monthlyRetainer)}</strong> más IVA por
-                          un plazo de {data.pricing.retainerMonths} meses a fin de realizar las
-                          labores de ejecución, implementación y acompañamiento. El
-                          inicio de esta etapa será a libre decisión del cliente.
+                          <strong className="text-primary">{formatCurrency(data.pricing.monthlyRetainer)}</strong> más IVA por
+                          un plazo de {data.pricing.retainerMonths} meses.
                         </p>
                       </div>
                     )}
                   </div>
 
-                  {/* Exclusions */}
-                  {data.pricing.exclusionsText && (
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {data.pricing.exclusionsText}
-                    </p>
-                  )}
-                  {!data.pricing.exclusionsText && (
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      La presente propuesta no incluye servicios o gastos adicionales que no se
-                      encuentren expresamente previstos tales como son gastos notariales, pago de
-                      derechos, cuotas de terceros, legalización o apostilla de documentos, entre
-                      otros que sean necesarios y que únicamente serán erogados previa autorización de
-                      su parte.
-                    </p>
-                  )}
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {data.pricing.exclusionsText || 
+                      "La presente propuesta no incluye servicios o gastos adicionales que no se encuentren expresamente previstos tales como gastos notariales, pago de derechos, cuotas de terceros, legalización o apostilla de documentos, entre otros."}
+                  </p>
                 </section>
               )}
 
-              {/* ============ III. GARANTÍAS DE SATISFACCIÓN ============ */}
+              {/* ============ III. GARANTÍAS ============ */}
               {data.firmSettings?.guarantees_text && (
-                <section className="mb-6">
-                  <h2 className="text-base font-bold mb-4 text-primary">
+                <section className="mb-8">
+                  <h2 className="text-base font-bold mb-4 text-primary border-b pb-2">
                     III. GARANTÍAS DE SATISFACCIÓN
                   </h2>
                   <p className="text-sm leading-relaxed whitespace-pre-line">
@@ -359,56 +339,48 @@ export function ProposalPreview({
               )}
 
               {/* ============ CIERRE ============ */}
-              <section className="mb-6">
-                <Separator className="my-4" />
-                {data.firmSettings?.closing_text ? (
-                  <p className="text-sm leading-relaxed whitespace-pre-line">
-                    {data.firmSettings.closing_text}
-                  </p>
-                ) : (
-                  <p className="text-sm leading-relaxed whitespace-pre-line">
-                    {FIXED_TEXTS.despedida}
-                  </p>
-                )}
-                <p className="font-bold text-sm mt-6 text-center">{firmName}</p>
-              </section>
-
-              {/* ============ BLOQUE DE ACEPTACIÓN ============ */}
-              <section className="mt-8 pt-4 border-t border-dashed">
-                <p className="text-sm leading-relaxed mb-6">{FIXED_TEXTS.aceptacion}</p>
-                <p className="text-sm font-semibold mb-2">FIRMA DE CONFORMIDAD Y ACEPTACIÓN:</p>
-                <div className="border-b border-foreground w-64 h-8"></div>
-              </section>
-
-              {/* ============ FOOTER ============ */}
-              <div className="mt-8 text-center">
-                <p className="text-xs text-muted-foreground">
-                  Esta propuesta tiene vigencia de 30 días a partir de su fecha de envío.
+              <section className="mb-8">
+                <Separator className="my-6" />
+                <p className="text-sm leading-relaxed whitespace-pre-line">
+                  {data.firmSettings?.closing_text || FIXED_TEXTS.despedida}
                 </p>
-              </div>
-            </div>
-          )}
-        </div>
-      </ScrollArea>
+              </section>
 
-      {/* Generate Button */}
-      <div className="p-4 border-t bg-muted/30">
-        <Button
-          className="w-full"
-          size="lg"
-          onClick={onGenerate}
-          disabled={isGenerating || !hasContent}
-        >
-          {isGenerating ? (
-            <>Guardando...</>
-          ) : (
-            <>
-              <ArrowRight className="h-5 w-5 mr-2" />
-              Siguiente paso
-            </>
-          )}
-        </Button>
-      </div>
-    </div>
+              {/* ============ FIRMA ============ */}
+              <div className="mt-8 pt-4">
+                <p className="text-sm font-semibold">{firmName}</p>
+              </div>
+
+              {/* ============ ACEPTACIÓN ============ */}
+              <section className="mt-8 pt-6 border-t">
+                <h3 className="text-sm font-bold mb-3 text-primary">ACEPTACIÓN</h3>
+                <p className="text-sm leading-relaxed">{FIXED_TEXTS.aceptacion}</p>
+              </section>
+            </div>
+          </div>
+        </ScrollArea>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/30">
+          <div className="text-sm text-muted-foreground">
+            {!isComplete && (
+              <span className="text-amber-600 dark:text-amber-400">
+                ⚠️ La propuesta aún no está completa ({progress}%)
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" onClick={onDownloadPDF}>
+              <Download className="h-4 w-4 mr-2" />
+              Descargar PDF
+            </Button>
+            <Button onClick={onSendToClient} disabled={!isComplete}>
+              <Send className="h-4 w-4 mr-2" />
+              Enviar al cliente
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
