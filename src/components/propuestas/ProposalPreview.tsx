@@ -1,4 +1,4 @@
-import { FileText, Download, Send, Eye, ArrowRight } from "lucide-react";
+import { FileText, Eye, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -8,8 +8,6 @@ interface ProposalPreviewProps {
   data: ProposalPreviewData;
   isGenerating: boolean;
   onGenerate: () => void;
-  onDownload: () => void;
-  onSend: () => void;
 }
 
 // Fixed transition texts - could be moved to firm_settings later
@@ -104,8 +102,6 @@ export function ProposalPreview({
   data,
   isGenerating,
   onGenerate,
-  onDownload,
-  onSend,
 }: ProposalPreviewProps) {
   const hasContent = data.background || data.selectedServices.length > 0;
   const firmName = data.firmSettings?.name || "Nuestra Firma";
@@ -114,22 +110,10 @@ export function ProposalPreview({
     <div className="h-full flex flex-col bg-card border rounded-lg overflow-hidden">
       {/* Header */}
       <div className="p-4 border-b bg-muted/30">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold flex items-center gap-2">
-            <Eye className="h-5 w-5" />
-            Vista previa
-          </h2>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={onDownload} disabled={!hasContent}>
-              <Download className="h-4 w-4 mr-1" />
-              Descargar
-            </Button>
-            <Button variant="outline" size="sm" onClick={onSend} disabled={!hasContent}>
-              <Send className="h-4 w-4 mr-1" />
-              Enviar
-            </Button>
-          </div>
-        </div>
+        <h2 className="font-semibold flex items-center gap-2">
+          <Eye className="h-5 w-5" />
+          Vista previa
+        </h2>
       </div>
 
       {/* Preview Content */}
