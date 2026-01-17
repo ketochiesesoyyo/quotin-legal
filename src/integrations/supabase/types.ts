@@ -723,11 +723,13 @@ export type Database = {
       services: {
         Row: {
           created_at: string
+          deliverables_template: string | null
           description: string | null
           fee_type: string | null
           id: string
           is_active: boolean | null
           name: string
+          objectives_template: string | null
           sort_order: number | null
           standard_text: string | null
           suggested_fee: number | null
@@ -736,11 +738,13 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deliverables_template?: string | null
           description?: string | null
           fee_type?: string | null
           id?: string
           is_active?: boolean | null
           name: string
+          objectives_template?: string | null
           sort_order?: number | null
           standard_text?: string | null
           suggested_fee?: number | null
@@ -749,11 +753,13 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deliverables_template?: string | null
           description?: string | null
           fee_type?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
+          objectives_template?: string | null
           sort_order?: number | null
           standard_text?: string | null
           suggested_fee?: number | null

@@ -33,6 +33,7 @@ import type {
   FirmSettings,
   PricingMode,
   PaymentInstallment,
+  GeneratedProposalContent,
 } from "@/components/propuestas/types";
 
 export default function PropuestaEditar() {
@@ -67,6 +68,8 @@ export default function PropuestaEditar() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [showFullPreview, setShowFullPreview] = useState(false);
+  const [generatedContent, setGeneratedContent] = useState<GeneratedProposalContent | null>(null);
+  const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [recipientData, setRecipientData] = useState<RecipientData>({
     fullName: "[Nombre del Contacto]",
     position: null,
@@ -574,6 +577,75 @@ export default function PropuestaEditar() {
     toast({ title: "Enviar", description: "Funcionalidad próximamente disponible" });
   };
 
+  // Generate AI content for proposal
+  const handleGenerateContent = async () => {
+    const selectedServices = services.filter(s => s.isSelected);
+    if (selectedServices.length === 0) {
+      toast({
+        title: "Sin servicios seleccionados",
+        description: "Selecciona al menos un servicio para generar el contenido",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGeneratingContent(true);
+    try {
+      const aiAnalysis = caseData?.ai_analysis as AIAnalysis | null;
+      
+      const response = await supabase.functions.invoke('generate-proposal-content', {
+        body: {
+          selectedServices: selectedServices.map(s => ({
+            id: s.service.id,
+            name: s.service.name,
+            standardText: s.customText || s.service.standard_text,
+            objectivesTemplate: (s.service as any).objectives_template || null,
+            deliverablesTemplate: (s.service as any).deliverables_template || null,
+          })),
+          clientContext: {
+            clientName: client?.group_name || "Cliente",
+            groupAlias: client?.alias || null,
+            industry: client?.industry || null,
+            entityCount: entities.length,
+            employeeCount: client?.employee_count || 0,
+            annualRevenue: client?.annual_revenue || null,
+            entities: entities.map(e => ({
+              legalName: e.legal_name,
+              rfc: e.rfc,
+            })),
+          },
+          aiAnalysis: aiAnalysis ? {
+            objective: aiAnalysis.objective,
+            risks: aiAnalysis.risks || [],
+            summary: aiAnalysis.summary,
+          } : null,
+          background: proposalBackground,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Error al generar contenido');
+      }
+
+      const content = response.data as GeneratedProposalContent;
+      setGeneratedContent(content);
+      
+      toast({
+        title: "Contenido generado",
+        description: "El contenido de la propuesta ha sido generado con IA",
+      });
+    } catch (error) {
+      console.error("Error generating content:", error);
+      toast({
+        title: "Error al generar contenido",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingContent(false);
+    }
+  };
+
   // Build preview data
   const previewData: ProposalPreviewData = useMemo(() => {
     const selectedServicesData = services.filter((s) => s.isSelected);
@@ -634,8 +706,9 @@ export default function PropuestaEditar() {
             closing_text: firmSettings.closing_text,
           }
         : undefined,
+      generatedContent: generatedContent || undefined,
     };
-  }, [client, entities, proposalBackground, services, customInitialPayment, customMonthlyRetainer, customRetainerMonths, installments, retainerStartDescription, canCancelWithoutPenalty, pricingMode, firmSettings, recipientData]);
+  }, [client, entities, proposalBackground, services, customInitialPayment, customMonthlyRetainer, customRetainerMonths, installments, retainerStartDescription, canCancelWithoutPenalty, pricingMode, firmSettings, recipientData, generatedContent]);
 
   // Validated data for display
   const validatedData = useMemo(() => ({
@@ -806,6 +879,9 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                 onUpdateCustomText={handleUpdateCustomText}
                 onUpdateServiceFee={handleUpdateServiceFee}
                 showModeSelector={false}
+                onGenerateContent={handleGenerateContent}
+                isGeneratingContent={isGeneratingContent}
+                hasGeneratedContent={!!generatedContent}
               />
             </div>
           </ScrollArea>

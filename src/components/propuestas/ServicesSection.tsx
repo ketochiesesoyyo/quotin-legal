@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, Check, ChevronDown, ChevronUp, Pencil, DollarSign, Calculator, ListOrdered, Wallet } from "lucide-react";
+import { Sparkles, Check, ChevronDown, ChevronUp, Pencil, DollarSign, Calculator, ListOrdered, Wallet, Loader2, Wand2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,9 @@ interface ServicesSectionProps {
   onUpdateCustomText: (serviceId: string, text: string) => void;
   onUpdateServiceFee: (serviceId: string, fee: number, isMonthly: boolean) => void;
   showModeSelector?: boolean;
+  onGenerateContent?: () => void;
+  isGeneratingContent?: boolean;
+  hasGeneratedContent?: boolean;
 }
 
 // Helper to format currency
@@ -280,6 +283,9 @@ export function ServicesSection({
   onUpdateCustomText,
   onUpdateServiceFee,
   showModeSelector = true,
+  onGenerateContent,
+  isGeneratingContent = false,
+  hasGeneratedContent = false,
 }: ServicesSectionProps) {
   const preSelectedCount = services.filter((s) => s.confidence >= 80).length;
   const selectedCount = services.filter((s) => s.isSelected).length;
@@ -410,6 +416,40 @@ export function ServicesSection({
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* AI Content Generation Button */}
+        {onGenerateContent && selectedCount > 0 && (
+          <div className="mt-4 pt-4 border-t">
+            <Button
+              onClick={onGenerateContent}
+              disabled={isGeneratingContent}
+              className="w-full gap-2"
+              variant={hasGeneratedContent ? "outline" : "default"}
+            >
+              {isGeneratingContent ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generando contenido...
+                </>
+              ) : hasGeneratedContent ? (
+                <>
+                  <Wand2 className="h-4 w-4" />
+                  Regenerar contenido con IA
+                </>
+              ) : (
+                <>
+                  <Wand2 className="h-4 w-4" />
+                  Generar contenido con IA
+                </>
+              )}
+            </Button>
+            {hasGeneratedContent && (
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                ✓ Contenido generado - visible en la vista previa
+              </p>
+            )}
           </div>
         )}
       </CardContent>
