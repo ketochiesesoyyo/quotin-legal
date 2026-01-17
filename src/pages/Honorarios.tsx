@@ -27,6 +27,7 @@ import { TableSearch } from "@/components/ui/table-search";
 import { useTableSort } from "@/hooks/useTableSort";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { getErrorMessage } from "@/lib/error-utils";
 import { Plus, DollarSign, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
@@ -92,7 +93,7 @@ export default function Honorarios() {
       resetForm();
     },
     onError: (error) => {
-      toast({ title: "Error al crear plantilla", description: error.message, variant: "destructive" });
+      toast({ title: "Error al crear plantilla", description: getErrorMessage(error), variant: "destructive" });
     },
   });
 
@@ -120,7 +121,7 @@ export default function Honorarios() {
       resetForm();
     },
     onError: (error) => {
-      toast({ title: "Error al actualizar plantilla", description: error.message, variant: "destructive" });
+      toast({ title: "Error al actualizar plantilla", description: getErrorMessage(error), variant: "destructive" });
     },
   });
 
@@ -134,7 +135,7 @@ export default function Honorarios() {
       toast({ title: "Plantilla eliminada exitosamente" });
     },
     onError: (error) => {
-      toast({ title: "Error al eliminar plantilla", description: error.message, variant: "destructive" });
+      toast({ title: "Error al eliminar plantilla", description: getErrorMessage(error), variant: "destructive" });
     },
   });
 

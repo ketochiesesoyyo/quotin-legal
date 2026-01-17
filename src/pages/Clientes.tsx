@@ -16,6 +16,7 @@ import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { TableSearch } from "@/components/ui/table-search";
 import { useTableSort } from "@/hooks/useTableSort";
 import { useToast } from "@/hooks/use-toast";
+import { getErrorMessage } from "@/lib/error-utils";
 import { 
   Plus, 
   Building2, 
@@ -85,7 +86,7 @@ export default function Clientes() {
       toast({ title: "Cliente eliminado exitosamente" });
     },
     onError: (error) => {
-      toast({ title: "Error al eliminar cliente", description: error.message, variant: "destructive" });
+      toast({ title: "Error al eliminar cliente", description: getErrorMessage(error), variant: "destructive" });
     },
   });
 

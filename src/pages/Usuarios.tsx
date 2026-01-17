@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { getErrorMessage } from "@/lib/error-utils";
 import { Users, Shield, UserCog } from "lucide-react";
 import type { Tables, Enums } from "@/integrations/supabase/types";
 
@@ -83,7 +84,7 @@ export default function Usuarios() {
       toast({ title: "Rol actualizado exitosamente" });
     },
     onError: (error) => {
-      toast({ title: "Error al actualizar rol", description: error.message, variant: "destructive" });
+      toast({ title: "Error al actualizar rol", description: getErrorMessage(error), variant: "destructive" });
     },
   });
 
