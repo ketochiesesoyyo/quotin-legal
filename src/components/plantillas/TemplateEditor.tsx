@@ -221,6 +221,35 @@ export function TemplateEditor({
     }
   }, [selectedBlockId]);
 
+  const handleRemoveMark = useCallback(() => {
+    if (!editor) return;
+
+    const { from, to } = editor.state.selection;
+    
+    // Find blocks that overlap with the selection and remove them
+    setMarkedBlocks(prev => {
+      const overlapping = prev.filter(block => 
+        (block.startPos <= to && block.endPos >= from)
+      );
+      
+      if (overlapping.length > 0) {
+        // Remove the highlight from editor
+        editor.chain().focus().unsetHighlight().run();
+        
+        // Return blocks that don't overlap
+        return prev.filter(block => 
+          !(block.startPos <= to && block.endPos >= from)
+        );
+      }
+      
+      // If no block found but there's a highlight, just remove the highlight
+      editor.chain().focus().unsetHighlight().run();
+      return prev;
+    });
+    
+    setSelectedBlockId(null);
+  }, [editor, selectedBlockId]);
+
   const selectedBlock = markedBlocks.find(b => b.id === selectedBlockId);
 
   return (
@@ -230,6 +259,7 @@ export function TemplateEditor({
         onMarkAsStatic={handleMarkAsStatic}
         onMarkAsVariable={handleMarkAsVariable}
         onMarkAsDynamic={handleMarkAsDynamic}
+        onRemoveMark={handleRemoveMark}
       />
 
       {/* Marked blocks summary */}
