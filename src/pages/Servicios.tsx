@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -28,8 +29,9 @@ import { useTableSort } from "@/hooks/useTableSort";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/error-utils";
-import { Plus, Briefcase, MoreHorizontal, Pencil, Trash2, DollarSign, Upload } from "lucide-react";
+import { Plus, Briefcase, MoreHorizontal, Pencil, Trash2, DollarSign } from "lucide-react";
 import { ImportServicesDialog } from "@/components/servicios/ImportServicesDialog";
+import { BulkActionsToolbar } from "@/components/servicios/BulkActionsToolbar";
 import {
   Select,
   SelectContent,
@@ -50,6 +52,7 @@ type Service = Tables<"services">;
 export default function Servicios() {
   const [isOpen, setIsOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -146,6 +149,85 @@ export default function Servicios() {
       toast({ title: "Error al eliminar servicio", description: getErrorMessage(error), variant: "destructive" });
     },
   });
+
+  // Bulk mutations
+  const bulkUpdateFeeMutation = useMutation({
+    mutationFn: async ({ ids, fee, monthlyFee }: { ids: string[]; fee: number | null; monthlyFee: number | null }) => {
+      const updateData: Record<string, number | null> = {};
+      if (fee !== null) updateData.suggested_fee = fee;
+      if (monthlyFee !== null) updateData.suggested_monthly_fee = monthlyFee;
+      
+      const { error } = await supabase
+        .from("services")
+        .update(updateData)
+        .in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["services"] });
+      toast({ title: "Honorarios actualizados exitosamente" });
+      setSelectedIds(new Set());
+    },
+    onError: (error) => {
+      toast({ title: "Error al actualizar honorarios", description: getErrorMessage(error), variant: "destructive" });
+    },
+  });
+
+  const bulkUpdateStatusMutation = useMutation({
+    mutationFn: async ({ ids, isActive }: { ids: string[]; isActive: boolean }) => {
+      const { error } = await supabase
+        .from("services")
+        .update({ is_active: isActive })
+        .in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: (_, { isActive }) => {
+      queryClient.invalidateQueries({ queryKey: ["services"] });
+      toast({ title: `${isActive ? "Activados" : "Desactivados"} exitosamente` });
+      setSelectedIds(new Set());
+    },
+    onError: (error) => {
+      toast({ title: "Error al actualizar estado", description: getErrorMessage(error), variant: "destructive" });
+    },
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase.from("services").delete().in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["services"] });
+      toast({ title: "Servicios eliminados exitosamente" });
+      setSelectedIds(new Set());
+    },
+    onError: (error) => {
+      toast({ title: "Error al eliminar servicios", description: getErrorMessage(error), variant: "destructive" });
+    },
+  });
+
+  // Selection handlers
+  const handleSelectAll = (checked: boolean) => {
+    if (checked && filteredData) {
+      setSelectedIds(new Set(filteredData.map((s) => s.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+
+  const handleSelectOne = (id: string, checked: boolean) => {
+    const newSet = new Set(selectedIds);
+    if (checked) {
+      newSet.add(id);
+    } else {
+      newSet.delete(id);
+    }
+    setSelectedIds(newSet);
+  };
+
+  const isAllSelected = filteredData && filteredData.length > 0 && selectedIds.size === filteredData.length;
+  const isSomeSelected = selectedIds.size > 0 && (!filteredData || selectedIds.size < filteredData.length);
+  const isBulkUpdating = bulkUpdateFeeMutation.isPending || bulkUpdateStatusMutation.isPending || bulkDeleteMutation.isPending;
 
   const resetForm = () => {
     setFormData({ 
@@ -356,7 +438,23 @@ export default function Servicios() {
             placeholder="Buscar servicio..."
           />
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {/* Bulk Actions Toolbar */}
+          {selectedIds.size > 0 && (
+            <BulkActionsToolbar
+              selectedCount={selectedIds.size}
+              onClearSelection={() => setSelectedIds(new Set())}
+              onBulkUpdateFee={(fee, monthlyFee) => 
+                bulkUpdateFeeMutation.mutate({ ids: Array.from(selectedIds), fee, monthlyFee })
+              }
+              onBulkUpdateStatus={(isActive) =>
+                bulkUpdateStatusMutation.mutate({ ids: Array.from(selectedIds), isActive })
+              }
+              onBulkDelete={() => bulkDeleteMutation.mutate(Array.from(selectedIds))}
+              isUpdating={isBulkUpdating}
+            />
+          )}
+          
           {isLoading ? (
             <p className="text-muted-foreground">Cargando...</p>
           ) : services?.length === 0 ? (
@@ -367,6 +465,15 @@ export default function Servicios() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[40px]">
+                    <Checkbox
+                      checked={isAllSelected}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Seleccionar todos"
+                      className={isSomeSelected ? "data-[state=checked]:bg-primary/50" : ""}
+                      {...(isSomeSelected ? { "data-state": "checked" } : {})}
+                    />
+                  </TableHead>
                   <SortableTableHead sortKey="name" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Nombre</SortableTableHead>
                   <SortableTableHead sortKey="description" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Descripción</SortableTableHead>
                   <SortableTableHead sortKey="fee_type" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Tipo de Cobro</SortableTableHead>
@@ -400,7 +507,14 @@ export default function Servicios() {
                   };
 
                   return (
-                    <TableRow key={service.id}>
+                    <TableRow key={service.id} className={selectedIds.has(service.id) ? "bg-muted/50" : ""}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.has(service.id)}
+                          onCheckedChange={(checked) => handleSelectOne(service.id, checked as boolean)}
+                          aria-label={`Seleccionar ${service.name}`}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">{service.name}</TableCell>
                       <TableCell className="max-w-[200px] truncate">
                         {service.description || "-"}
