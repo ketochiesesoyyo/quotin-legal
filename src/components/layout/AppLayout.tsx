@@ -10,11 +10,11 @@ export function AppLayout({ children }: AppLayoutProps) {
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <AppSidebar />
-        <main className="flex-1 flex flex-col">
+        <main className="flex-1 flex min-h-0 flex-col">
           <header className="h-14 border-b flex items-center px-4 bg-background">
             <SidebarTrigger />
           </header>
-          <div className="flex-1 p-6 bg-muted/30">
+          <div className="flex-1 min-h-0 overflow-auto p-6 bg-muted/30">
             {children}
           </div>
         </main>
