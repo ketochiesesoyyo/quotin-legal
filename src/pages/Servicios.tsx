@@ -28,7 +28,8 @@ import { useTableSort } from "@/hooks/useTableSort";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/error-utils";
-import { Plus, Briefcase, MoreHorizontal, Pencil, Trash2, DollarSign } from "lucide-react";
+import { Plus, Briefcase, MoreHorizontal, Pencil, Trash2, DollarSign, Upload } from "lucide-react";
+import { ImportServicesDialog } from "@/components/servicios/ImportServicesDialog";
 import {
   Select,
   SelectContent,
@@ -191,19 +192,21 @@ export default function Servicios() {
           <h1 className="text-3xl font-bold">Servicios</h1>
           <p className="text-muted-foreground">Catálogo de servicios y textos estándar</p>
         </div>
-        <Dialog open={isOpen} onOpenChange={(open) => {
-          setIsOpen(open);
-          if (!open) {
-            setEditingService(null);
-            resetForm();
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo Servicio
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <ImportServicesDialog />
+          <Dialog open={isOpen} onOpenChange={(open) => {
+            setIsOpen(open);
+            if (!open) {
+              setEditingService(null);
+              resetForm();
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Servicio
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>{editingService ? "Editar Servicio" : "Nuevo Servicio"}</DialogTitle>
@@ -318,8 +321,9 @@ export default function Servicios() {
                 </Button>
               </div>
             </form>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
