@@ -399,7 +399,7 @@ export default function Servicios() {
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-                  {editingService ? "Guardar Cambios" : "Crear Servicio"}
+                  {editingService ? "Guardar y Cerrar" : "Crear Servicio"}
                 </Button>
               </div>
             </form>
