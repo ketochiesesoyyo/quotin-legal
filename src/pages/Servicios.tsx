@@ -462,6 +462,7 @@ export default function Servicios() {
               No hay servicios registrados. Crea el primero.
             </p>
           ) : (
+            <div className="max-h-[60vh] overflow-auto rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -559,6 +560,7 @@ export default function Servicios() {
                 })}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>
