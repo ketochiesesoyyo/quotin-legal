@@ -13,7 +13,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         <header className="h-14 shrink-0 border-b flex items-center px-4 bg-background">
           <SidebarTrigger />
         </header>
-        <div className="flex-1 overflow-y-auto p-6 bg-muted/30">
+        <div className="min-h-0 flex-1 overflow-y-auto p-6 bg-muted/30">
           {children}
         </div>
       </SidebarInset>

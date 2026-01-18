@@ -289,11 +289,24 @@ export default function Servicios() {
                 Nuevo Servicio
               </Button>
             </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
+          <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+            <DialogHeader className="shrink-0 flex flex-row items-center justify-between gap-4">
               <DialogTitle>{editingService ? "Editar Servicio" : "Nuevo Servicio"}</DialogTitle>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setIsOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button 
+                  type="submit" 
+                  size="sm"
+                  form="service-form"
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                >
+                  {editingService ? "Guardar y Cerrar" : "Crear Servicio"}
+                </Button>
+              </div>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form id="service-form" onSubmit={handleSubmit} className="min-h-0 flex-1 overflow-y-auto space-y-4 pr-2">
               <div className="space-y-2">
                 <Label htmlFor="name">Nombre del Servicio</Label>
                 <Input
@@ -393,14 +406,6 @@ export default function Servicios() {
                   onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
                 />
                 <Label htmlFor="is_active">Servicio activo</Label>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-                  {editingService ? "Guardar y Cerrar" : "Crear Servicio"}
-                </Button>
               </div>
             </form>
             </DialogContent>
