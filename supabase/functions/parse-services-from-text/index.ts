@@ -44,39 +44,44 @@ serve(async (req) => {
 
     const systemPrompt = `Eres un asistente experto en análisis de servicios profesionales, especialmente en el ámbito legal y de consultoría.
 
-Tu tarea es analizar el texto proporcionado y extraer todos los servicios profesionales que puedas identificar.
+Tu tarea es analizar el texto proporcionado y extraer TODOS los servicios profesionales que puedas identificar.
 
-Para cada servicio encontrado, debes proporcionar:
-1. name: Nombre corto y claro del servicio (máximo 50 caracteres)
-2. description: Descripción breve del servicio (1-2 oraciones, máximo 200 caracteres)
-3. standard_text: Texto formal y profesional para usar en propuestas de servicios (2-4 oraciones, describiendo el alcance y beneficios)
-4. fee_type: Tipo de cobro inferido del contexto:
+INSTRUCCIONES CRÍTICAS - DEBES generar estos 4 campos para CADA servicio:
+
+1. "name": Nombre corto y claro del servicio (máximo 50 caracteres)
+
+2. "description": Descripción breve pero informativa del servicio. SIEMPRE genera una descripción de 1-2 oraciones explicando qué es el servicio y para qué sirve. Si el texto original no tiene descripción, CRÉALA basándote en el nombre del servicio.
+
+3. "standard_text": Texto formal y profesional para usar en propuestas comerciales. SIEMPRE genera un párrafo de 3-5 oraciones describiendo el alcance, metodología y beneficios del servicio. Este texto será usado directamente en propuestas a clientes, así que hazlo profesional y persuasivo. Si el texto original no tiene este contenido, CRÉALO basándote en el tipo de servicio.
+
+4. "fee_type": Tipo de cobro inferido del contexto:
    - "one_time": Para servicios puntuales (constituciones, contratos, litigios específicos)
    - "monthly": Para servicios de iguala o acompañamiento continuo
    - "both": Para servicios que típicamente tienen un pago inicial + iguala mensual
 
-Si el texto no contiene servicios claros, devuelve un array vacío.
+IMPORTANTE: 
+- NUNCA dejes "description" o "standard_text" vacíos o con valores genéricos
+- Si no hay información suficiente en el texto, GENERA contenido profesional apropiado
+- Responde ÚNICAMENTE con un JSON válido, sin texto adicional ni markdown`;
 
-IMPORTANTE: Responde ÚNICAMENTE con un JSON válido, sin texto adicional.`;
-
-    const userPrompt = `Analiza el siguiente texto y extrae los servicios profesionales:
+    const userPrompt = `Analiza el siguiente texto y extrae los servicios profesionales. RECUERDA: cada servicio DEBE tener name, description, standard_text y fee_type con contenido real y útil.
 
 ---
 ${trimmedText}
 ---
 
-Responde con un JSON en este formato exacto:
+Responde con un JSON en este formato exacto (TODOS los campos son OBLIGATORIOS y deben tener contenido real):
 {
   "services": [
     {
-      "name": "Nombre del Servicio",
-      "description": "Descripción breve",
-      "standard_text": "Texto formal para propuestas...",
+      "name": "Constitución de Sociedades",
+      "description": "Servicio de creación legal de empresas y entidades mercantiles, incluyendo todos los trámites ante el SAT y el Registro Público.",
+      "standard_text": "Nuestro servicio de constitución de sociedades incluye la elaboración del acta constitutiva, definición de estatutos sociales, inscripción ante el Registro Público de Comercio, obtención de RFC y e.firma de la persona moral, así como la apertura de cuenta bancaria corporativa. Contamos con amplia experiencia en diversos tipos societarios, garantizando una estructura legal óptima para sus objetivos empresariales.",
       "fee_type": "one_time"
     }
   ],
   "confidence": 0.85,
-  "notes": "Observaciones sobre el análisis"
+  "notes": "Se encontraron X servicios con descripciones completas"
 }`;
 
     console.log("Calling Lovable AI Gateway to parse services...");
