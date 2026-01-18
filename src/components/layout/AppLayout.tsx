@@ -8,13 +8,13 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="flex h-svh w-full overflow-hidden">
         <AppSidebar />
-        <main className="flex-1 flex min-h-0 flex-col">
-          <header className="h-14 border-b flex items-center px-4 bg-background">
+        <main className="flex min-w-0 flex-1 flex-col">
+          <header className="h-14 shrink-0 border-b flex items-center px-4 bg-background">
             <SidebarTrigger />
           </header>
-          <div className="flex-1 min-h-0 overflow-auto p-6 bg-muted/30">
+          <div className="min-h-0 flex-1 overflow-auto p-6 bg-muted/30">
             {children}
           </div>
         </main>
