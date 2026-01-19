@@ -20,6 +20,7 @@ interface TextSelectionToolbarProps {
   onManualEdit: (newText: string) => void;
   onAIRewrite: (instruction: string) => Promise<string>;
   isRewriting?: boolean;
+  useRelativePosition?: boolean; // When true, position is handled by parent
 }
 
 export function TextSelectionToolbar({
@@ -29,6 +30,7 @@ export function TextSelectionToolbar({
   onManualEdit,
   onAIRewrite,
   isRewriting = false,
+  useRelativePosition = false,
 }: TextSelectionToolbarProps) {
   const [mode, setMode] = useState<'initial' | 'edit' | 'ai'>('initial');
   const [editedText, setEditedText] = useState(selectedText);
@@ -100,22 +102,31 @@ export function TextSelectionToolbar({
   };
 
   // Calculate position adjustments to keep toolbar in view
-  const adjustedPosition = {
-    top: Math.max(10, position.top - 45), // Position above selection
-    left: Math.max(10, Math.min(position.left, window.innerWidth - 300)),
-  };
+  // When using relative positioning, use simpler positioning
+  const adjustedPosition = useRelativePosition
+    ? { top: 0, left: 0 }
+    : {
+        top: Math.max(10, position.top - 45), // Position above selection
+        left: Math.max(10, Math.min(position.left, window.innerWidth - 300)),
+      };
+
+  const positionStyles = useRelativePosition
+    ? {} // Position is handled by parent
+    : {
+        position: 'fixed' as const,
+        top: adjustedPosition.top,
+        left: adjustedPosition.left,
+      };
 
   return (
     <div
       ref={toolbarRef}
       className={cn(
-        "fixed z-50 bg-popover border rounded-lg shadow-lg p-2",
-        "animate-in fade-in-0 zoom-in-95 duration-200"
+        "bg-popover border rounded-lg shadow-lg p-2",
+        "animate-in fade-in-0 zoom-in-95 duration-200",
+        !useRelativePosition && "fixed z-50"
       )}
-      style={{
-        top: adjustedPosition.top,
-        left: adjustedPosition.left,
-      }}
+      style={positionStyles}
     >
       {/* Initial mode - show buttons */}
       {mode === 'initial' && (
