@@ -40,6 +40,7 @@ import type {
   PricingMode,
   PaymentInstallment,
   GeneratedProposalContent,
+  TextOverride,
 } from "@/components/propuestas/types";
 
 export default function PropuestaEditar() {
@@ -87,6 +88,9 @@ export default function PropuestaEditar() {
   // Document template state (Sprint 2)
   const [selectedDocumentTemplate, setSelectedDocumentTemplate] = useState<DocumentTemplate | null>(null);
   const [previewMode, setPreviewMode] = useState<'classic' | 'template'>('classic');
+
+  // Sprint 4: Text overrides for inline preview editing
+  const [textOverrides, setTextOverrides] = useState<TextOverride[]>([]);
 
   // Sprint 3: Proposal versions and audit logging
   const { saveVersion, versions, latestVersionNumber, isSaving: isSavingVersion } = useProposalVersions(id);
@@ -603,6 +607,7 @@ export default function PropuestaEditar() {
         },
         generatedContent,
         documentTemplateId: selectedDocumentTemplate?.id,
+        textOverrides: textOverrides.length > 0 ? textOverrides : undefined,
       };
 
       try {
@@ -725,6 +730,59 @@ export default function PropuestaEditar() {
       });
     } finally {
       setIsGeneratingContent(false);
+    }
+  };
+
+  // Handlers for text overrides (inline preview editing)
+  const handleTextOverride = (override: TextOverride) => {
+    setTextOverrides(prev => {
+      // Check if override for this section already exists
+      const existingIndex = prev.findIndex(o => o.sectionId === override.sectionId);
+      if (existingIndex >= 0) {
+        // Update existing
+        const updated = [...prev];
+        updated[existingIndex] = override;
+        return updated;
+      }
+      // Add new
+      return [...prev, override];
+    });
+  };
+
+  const handleRestoreOriginal = (sectionId: string) => {
+    setTextOverrides(prev => prev.filter(o => o.sectionId !== sectionId));
+  };
+
+  const handleAIRewrite = async (originalText: string, instruction: string, sectionId: string): Promise<string> => {
+    try {
+      const response = await supabase.functions.invoke('rewrite-text', {
+        body: {
+          originalText,
+          instruction,
+          context: {
+            clientName: client?.group_name || "Cliente",
+            industry: client?.industry || null,
+            sectionType: sectionId.includes('background') ? 'background' 
+              : sectionId.includes('service') ? 'service'
+              : sectionId.includes('pricing') ? 'pricing'
+              : 'transition',
+          },
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Error al reescribir texto');
+      }
+
+      return response.data?.rewrittenText || originalText;
+    } catch (error) {
+      console.error("Error rewriting text:", error);
+      toast({
+        title: "Error al reescribir",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+      throw error;
     }
   };
 
@@ -1049,6 +1107,14 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                 data={previewData}
                 isGenerating={isGenerating}
                 onGenerate={handleGenerate}
+                textOverrides={textOverrides}
+                onTextOverride={handleTextOverride}
+                onRestoreOriginal={handleRestoreOriginal}
+                onAIRewrite={handleAIRewrite}
+                clientContext={{
+                  clientName: client?.group_name || "Cliente",
+                  industry: client?.industry || null,
+                }}
               />
             </TabsContent>
             <TabsContent value="template" className="flex-1 m-0 min-h-0 overflow-hidden">

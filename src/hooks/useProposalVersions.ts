@@ -9,6 +9,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/error-utils";
 
+export interface TextOverrideData {
+  sectionId: string;
+  originalText: string;
+  newText: string;
+  isAIGenerated: boolean;
+  instruction?: string;
+}
+
 export interface ProposalVersionContent {
   background?: string;
   services: Array<{
@@ -31,6 +39,7 @@ export interface ProposalVersionContent {
   generatedContent?: unknown;
   documentTemplateId?: string;
   dynamicBlocksContent?: Record<string, string>;
+  textOverrides?: TextOverrideData[]; // New field for inline edits
 }
 
 export interface ProposalVersion {

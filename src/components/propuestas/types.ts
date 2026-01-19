@@ -10,6 +10,15 @@ export type CaseService = Tables<"case_services">;
 export type PricingTemplate = Tables<"pricing_templates">;
 export type CaseStatus = Enums<"case_status">;
 
+// Text override for inline editing in preview
+export interface TextOverride {
+  sectionId: string;
+  originalText: string;
+  newText: string;
+  isAIGenerated: boolean;
+  instruction?: string; // AI instruction if AI-generated
+}
+
 // Pricing mode for proposal fee calculation
 export type PricingMode = 'per_service' | 'summed' | 'global';
 
