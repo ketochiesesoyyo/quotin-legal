@@ -7,40 +7,51 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 
 interface AIBackgroundSuggestionProps {
   aiSuggestion?: string;
+  editedSuggestion?: string;
   isAIProcessing?: boolean;
   onInsertInProposal: (text: string) => void;
+  onSaveEdit?: (text: string) => void;
   onRequestRegenerate?: () => void;
 }
 
 export function AIBackgroundSuggestion({
   aiSuggestion,
+  editedSuggestion: externalEditedSuggestion,
   isAIProcessing = false,
   onInsertInProposal,
+  onSaveEdit,
   onRequestRegenerate,
 }: AIBackgroundSuggestionProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isOpen, setIsOpen] = useState(true);
-  const [editedSuggestion, setEditedSuggestion] = useState(aiSuggestion || "");
+  const [localEditedSuggestion, setLocalEditedSuggestion] = useState(externalEditedSuggestion || aiSuggestion || "");
 
-  // Sync when new suggestion arrives
-  if (aiSuggestion && aiSuggestion !== editedSuggestion && !isEditing) {
-    setEditedSuggestion(aiSuggestion);
+  // Use external edited suggestion if provided, otherwise use local
+  const displayText = externalEditedSuggestion || localEditedSuggestion;
+
+  // Sync when new AI suggestion arrives (only if no external edited version and not editing)
+  if (aiSuggestion && !externalEditedSuggestion && aiSuggestion !== localEditedSuggestion && !isEditing) {
+    setLocalEditedSuggestion(aiSuggestion);
   }
 
   const handleSave = () => {
+    // Notify parent about the edit so it persists in parent state
+    if (onSaveEdit) {
+      onSaveEdit(localEditedSuggestion);
+    }
     setIsEditing(false);
   };
 
   const handleCancel = () => {
-    setEditedSuggestion(aiSuggestion || "");
+    setLocalEditedSuggestion(externalEditedSuggestion || aiSuggestion || "");
     setIsEditing(false);
   };
 
   const handleInsert = () => {
-    onInsertInProposal(editedSuggestion);
+    onInsertInProposal(localEditedSuggestion);
   };
 
-  const hasContent = !!aiSuggestion || !!editedSuggestion;
+  const hasContent = !!aiSuggestion || !!displayText;
 
   if (!hasContent && !isAIProcessing) {
     return null;
@@ -98,8 +109,8 @@ export function AIBackgroundSuggestion({
             ) : isEditing ? (
               <div className="space-y-3">
                 <Textarea
-                  value={editedSuggestion}
-                  onChange={(e) => setEditedSuggestion(e.target.value)}
+                  value={localEditedSuggestion}
+                  onChange={(e) => setLocalEditedSuggestion(e.target.value)}
                   rows={10}
                   className="resize-none bg-white dark:bg-gray-900"
                 />
@@ -118,7 +129,7 @@ export function AIBackgroundSuggestion({
               <div className="space-y-4">
                 <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border border-blue-100 dark:border-blue-900">
                   <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
-                    {editedSuggestion}
+                    {displayText}
                   </p>
                 </div>
                 
