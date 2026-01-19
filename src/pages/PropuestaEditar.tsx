@@ -25,7 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import type { DocumentTemplate } from "@/components/plantillas/types";
+import type { DocumentTemplate, TemplateSchema } from "@/components/plantillas/types";
 import type {
   Case,
   Client,
@@ -43,6 +43,8 @@ import type {
   PaymentInstallment,
   GeneratedProposalContent,
   TextOverride,
+  TemplateSnapshot,
+  TemplateGenerationResponse,
 } from "@/components/propuestas/types";
 
 export default function PropuestaEditar() {
@@ -97,6 +99,9 @@ export default function PropuestaEditar() {
 
   // Sprint 4: Text overrides for inline preview editing
   const [textOverrides, setTextOverrides] = useState<TextOverride[]>([]);
+
+  // Template-first architecture: pre-generated block contents
+  const [generatedBlockContents, setGeneratedBlockContents] = useState<Record<string, string>>({});
 
   // Ref for scrolling to Antecedentes section
   const antecedentesRef = useRef<HTMLDivElement>(null);
@@ -289,8 +294,29 @@ export default function PropuestaEditar() {
       if ((caseData as any).pricing_mode) {
         setPricingMode((caseData as any).pricing_mode as PricingMode);
       }
+
+      // Template-first: Rehydrate generated block contents
+      if ((caseData as any).generated_block_contents) {
+        setGeneratedBlockContents((caseData as any).generated_block_contents as Record<string, string>);
+      }
     }
   }, [caseData]);
+
+  // Template-first: Detect if case has template mode
+  const hasTemplate = useMemo(() => {
+    return !!(caseData as any)?.selected_template_id && !!(caseData as any)?.template_snapshot;
+  }, [(caseData as any)?.selected_template_id, (caseData as any)?.template_snapshot]);
+
+  const templateSnapshot = useMemo(() => {
+    return (caseData as any)?.template_snapshot as TemplateSnapshot | null;
+  }, [(caseData as any)?.template_snapshot]);
+
+  // Auto-switch to template mode when template is detected
+  useEffect(() => {
+    if (hasTemplate) {
+      setPreviewMode('template');
+    }
+  }, [hasTemplate]);
 
   // Initialize recipient from primary contact
   useEffect(() => {
@@ -715,6 +741,53 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
 
   // Generate AI content for proposal
   const handleGenerateContent = async () => {
+    // Template-first mode: generate dynamic block contents
+    if (hasTemplate && caseData) {
+      setIsGeneratingContent(true);
+      try {
+        const response = await supabase.functions.invoke('generate-proposal-content', {
+          body: {
+            caseId: caseData.id,
+            mode: 'template',
+          },
+        });
+
+        if (response.error) {
+          throw new Error(response.error.message || 'Error al generar contenido');
+        }
+
+        const data = response.data as TemplateGenerationResponse;
+        
+        // Update local state (DB was already updated by edge function)
+        setGeneratedBlockContents(data.block_contents);
+        
+        // Show warnings if any
+        if (data.warnings?.length > 0) {
+          toast({
+            title: "Generación completada con advertencias",
+            description: `${data.warnings.length} bloque(s) con problemas`,
+            variant: "default",
+          });
+        } else {
+          toast({
+            title: "Contenido generado",
+            description: "Bloques dinámicos generados exitosamente",
+          });
+        }
+      } catch (error) {
+        console.error("Error generating template content:", error);
+        toast({
+          title: "Error al generar contenido",
+          description: getErrorMessage(error),
+          variant: "destructive",
+        });
+      } finally {
+        setIsGeneratingContent(false);
+      }
+      return;
+    }
+
+    // Freeform mode (legacy)
     const selectedServices = services.filter(s => s.isSelected);
     if (selectedServices.length === 0) {
       toast({
@@ -731,6 +804,8 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
       
       const response = await supabase.functions.invoke('generate-proposal-content', {
         body: {
+          caseId: caseData?.id,
+          mode: 'freeform',
           selectedServices: selectedServices.map(s => ({
             id: s.service.id,
             name: s.service.name,
@@ -1214,7 +1289,7 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
           <Tabs value={previewMode} onValueChange={(v) => setPreviewMode(v as 'classic' | 'template')} className="flex-1 flex flex-col min-h-0">
             <TabsList className="mb-4 shrink-0">
               <TabsTrigger value="classic">Vista Clásica</TabsTrigger>
-              <TabsTrigger value="template" disabled={!selectedDocumentTemplate}>
+              <TabsTrigger value="template" disabled={!hasTemplate && !selectedDocumentTemplate}>
                 Plantilla Compilada
               </TabsTrigger>
             </TabsList>
@@ -1234,7 +1309,18 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
               />
             </TabsContent>
             <TabsContent value="template" className="flex-1 m-0 min-h-0 overflow-hidden">
-              {selectedDocumentTemplate ? (
+              {/* Template-first mode: use templateSnapshot from case */}
+              {hasTemplate && templateSnapshot ? (
+                <div className="h-full flex flex-col min-h-0 border rounded-lg overflow-hidden bg-card">
+                  <CompiledDocumentPreview
+                    templateSnapshot={templateSnapshot}
+                    context={compilerContext}
+                    blockContents={generatedBlockContents}
+                    showDebug={true}
+                  />
+                </div>
+              ) : selectedDocumentTemplate ? (
+                /* Legacy: manually selected template */
                 <div className="h-full flex flex-col min-h-0 border rounded-lg overflow-hidden bg-card">
                   <CompiledDocumentPreview
                     template={selectedDocumentTemplate}
