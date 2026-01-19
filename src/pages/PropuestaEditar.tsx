@@ -1036,24 +1036,24 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
         </div>
 
         {/* Right Panel - Preview with Tabs */}
-        <div className="w-1/2 p-6 flex flex-col">
-          <Tabs value={previewMode} onValueChange={(v) => setPreviewMode(v as 'classic' | 'template')} className="flex-1 flex flex-col">
-            <TabsList className="mb-4">
+        <div className="w-1/2 p-6 flex flex-col min-h-0">
+          <Tabs value={previewMode} onValueChange={(v) => setPreviewMode(v as 'classic' | 'template')} className="flex-1 flex flex-col min-h-0">
+            <TabsList className="mb-4 shrink-0">
               <TabsTrigger value="classic">Vista Clásica</TabsTrigger>
               <TabsTrigger value="template" disabled={!selectedDocumentTemplate}>
                 Plantilla Compilada
               </TabsTrigger>
             </TabsList>
-            <TabsContent value="classic" className="flex-1 m-0">
+            <TabsContent value="classic" className="flex-1 m-0 min-h-0 overflow-hidden">
               <ProposalPreview
                 data={previewData}
                 isGenerating={isGenerating}
                 onGenerate={handleGenerate}
               />
             </TabsContent>
-            <TabsContent value="template" className="flex-1 m-0">
+            <TabsContent value="template" className="flex-1 m-0 min-h-0 overflow-hidden">
               {selectedDocumentTemplate ? (
-                <div className="h-full border rounded-lg overflow-hidden bg-card">
+                <div className="h-full flex flex-col min-h-0 border rounded-lg overflow-hidden bg-card">
                   <CompiledDocumentPreview
                     template={selectedDocumentTemplate}
                     context={compilerContext}
