@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, Check, ChevronDown, ChevronUp, Pencil, DollarSign, Calculator, ListOrdered, Wallet, Loader2, Wand2 } from "lucide-react";
+import { Sparkles, Check, ChevronDown, ChevronUp, Pencil, DollarSign, Calculator, ListOrdered, Wallet, Wand2, Eye, EyeOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { ServiceWithConfidence, PricingMode } from "./types";
+import { GeneratedContentPreview } from "./GeneratedContentPreview";
 
 interface ServicesSectionProps {
   services: ServiceWithConfidence[];
@@ -21,7 +22,10 @@ interface ServicesSectionProps {
   showModeSelector?: boolean;
   onGenerateContent?: () => void;
   isGeneratingContent?: boolean;
-  hasGeneratedContent?: boolean;
+  generatedServicesContent?: string;
+  editedServicesContent?: string;
+  onInsertServicesContent?: (text: string) => void;
+  onSaveServicesContentEdit?: (text: string) => void;
 }
 
 // Helper to format currency
@@ -285,8 +289,12 @@ export function ServicesSection({
   showModeSelector = true,
   onGenerateContent,
   isGeneratingContent = false,
-  hasGeneratedContent = false,
+  generatedServicesContent,
+  editedServicesContent,
+  onInsertServicesContent,
+  onSaveServicesContentEdit,
 }: ServicesSectionProps) {
+  const [isServicesCollapsed, setIsServicesCollapsed] = useState(false);
   const preSelectedCount = services.filter((s) => s.confidence >= 80).length;
   const selectedCount = services.filter((s) => s.isSelected).length;
   const selectedServices = services.filter((s) => s.isSelected);
@@ -323,23 +331,40 @@ export function ServicesSection({
     }
   };
 
+  const hasGeneratedContent = !!generatedServicesContent || !!editedServicesContent;
+
   return (
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-semibold">SERVICIOS RECOMENDADOS</CardTitle>
-          <Badge variant="secondary" className="text-xs gap-1">
-            <Sparkles className="h-3 w-3" />
-            IA PRE-SELECCIONÓ {preSelectedCount}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="text-xs gap-1">
+              <Sparkles className="h-3 w-3" />
+              IA PRE-SELECCIONÓ {preSelectedCount}
+            </Badge>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsServicesCollapsed(!isServicesCollapsed)}
+              className="h-8 w-8 p-0"
+            >
+              {isServicesCollapsed ? (
+                <Eye className="h-4 w-4" />
+              ) : (
+                <EyeOff className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         </div>
         <p className="text-sm text-muted-foreground">
           {selectedCount} servicio{selectedCount !== 1 ? "s" : ""} seleccionado{selectedCount !== 1 ? "s" : ""}
+          {isServicesCollapsed && " (lista colapsada)"}
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Pricing Mode Selector - only show if showModeSelector is true */}
-        {showModeSelector && onPricingModeChange && (
+        {showModeSelector && onPricingModeChange && !isServicesCollapsed && (
           <div className="bg-muted/50 rounded-lg p-4 space-y-3">
             <Label className="text-sm font-medium">¿Cómo calcular honorarios?</Label>
             <ToggleGroup
@@ -375,29 +400,57 @@ export function ServicesSection({
             </p>
           </div>
         )}
-        {/* Services list - always show regardless of pricing mode */}
-        <div className="space-y-3">
-          {services.map((item, index) => (
-            <ServiceCard
-              key={item.service.id}
-              item={item}
-              index={getLetter(index)}
-              pricingMode={pricingMode}
-              onToggle={() => onToggleService(item.service.id)}
-              onUpdateCustomText={(text) => onUpdateCustomText(item.service.id, text)}
-              onUpdateFee={(fee, isMonthly) => onUpdateServiceFee(item.service.id, fee, isMonthly)}
-            />
-          ))}
+        
+        {/* Services list - collapsible */}
+        {!isServicesCollapsed && (
+          <div className="space-y-3">
+            {services.map((item, index) => (
+              <ServiceCard
+                key={item.service.id}
+                item={item}
+                index={getLetter(index)}
+                pricingMode={pricingMode}
+                onToggle={() => onToggleService(item.service.id)}
+                onUpdateCustomText={(text) => onUpdateCustomText(item.service.id, text)}
+                onUpdateFee={(fee, isMonthly) => onUpdateServiceFee(item.service.id, fee, isMonthly)}
+              />
+            ))}
 
-          {services.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>No hay servicios disponibles</p>
-            </div>
-          )}
-        </div>
+            {services.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No hay servicios disponibles</p>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Collapsed state summary */}
+        {isServicesCollapsed && selectedCount > 0 && (
+          <div className="bg-muted/30 rounded-lg p-4">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{selectedCount} servicios</span> seleccionados
+              {(totalOneTime > 0 || totalMonthly > 0) && (
+                <>
+                  {" · "}
+                  {totalOneTime > 0 && <span>Inicial: {formatCurrency(totalOneTime)}</span>}
+                  {totalOneTime > 0 && totalMonthly > 0 && " · "}
+                  {totalMonthly > 0 && <span>Mensual: {formatCurrency(totalMonthly)}</span>}
+                </>
+              )}
+            </p>
+            <Button
+              variant="link"
+              size="sm"
+              onClick={() => setIsServicesCollapsed(false)}
+              className="p-0 h-auto mt-1"
+            >
+              Ver lista completa
+            </Button>
+          </div>
+        )}
 
         {/* Totals summary - show in per_service and summed modes */}
-        {(pricingMode === 'per_service' || pricingMode === 'summed') && selectedCount > 0 && (totalOneTime > 0 || totalMonthly > 0) && (
+        {(pricingMode === 'per_service' || pricingMode === 'summed') && selectedCount > 0 && (totalOneTime > 0 || totalMonthly > 0) && !isServicesCollapsed && (
           <div className="mt-4 pt-4 border-t">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Total de servicios seleccionados:</span>
@@ -428,29 +481,23 @@ export function ServicesSection({
               className="w-full gap-2"
               variant={hasGeneratedContent ? "outline" : "default"}
             >
-              {isGeneratingContent ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Generando contenido...
-                </>
-              ) : hasGeneratedContent ? (
-                <>
-                  <Wand2 className="h-4 w-4" />
-                  Regenerar contenido con IA
-                </>
-              ) : (
-                <>
-                  <Wand2 className="h-4 w-4" />
-                  Generar contenido con IA
-                </>
-              )}
+              <Wand2 className="h-4 w-4" />
+              {hasGeneratedContent ? "Regenerar contenido" : "Generar contenido de servicios"}
             </Button>
-            {hasGeneratedContent && (
-              <p className="text-xs text-muted-foreground text-center mt-2">
-                ✓ Contenido generado - visible en la vista previa
-              </p>
-            )}
           </div>
+        )}
+
+        {/* Generated Content Preview */}
+        {onInsertServicesContent && (generatedServicesContent || editedServicesContent || isGeneratingContent) && (
+          <GeneratedContentPreview
+            title="Contenido de servicios generado"
+            generatedContent={generatedServicesContent}
+            editedContent={editedServicesContent}
+            isGenerating={isGeneratingContent}
+            onInsertInProposal={onInsertServicesContent}
+            onSaveEdit={onSaveServicesContentEdit}
+            onRequestRegenerate={onGenerateContent}
+          />
         )}
       </CardContent>
     </Card>
