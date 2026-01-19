@@ -20,6 +20,9 @@ export interface ClientContext {
   employee_count?: number;
   contact_name?: string;
   contact_position?: string;
+  // Extended properties for template sources
+  entities?: string;        // Comma-separated list of entity legal names
+  primary_contact?: string; // Formatted salutation (position + name)
 }
 
 export interface EntityContext {
@@ -45,6 +48,8 @@ export interface ProposalContext {
   total_fee: number;
   monthly_retainer: number;
   retainer_months: number;
+  // Extended property for template sources
+  pricing_summary?: string; // Formatted pricing summary
 }
 
 export interface CaseContext {

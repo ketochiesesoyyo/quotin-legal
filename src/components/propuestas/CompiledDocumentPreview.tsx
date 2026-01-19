@@ -551,6 +551,20 @@ export function buildCompilerContext(data: {
     year: 'numeric',
   });
 
+  // Build entities list as comma-separated string
+  const entitiesList = (data.entities || [])
+    .map(e => e.legal_name)
+    .filter(Boolean)
+    .join(', ') || '[Sin entidades]';
+
+  // Build primary contact salutation
+  const primaryContact = data.recipientName
+    ? `${data.recipientPosition ? data.recipientPosition + ' ' : ''}${data.recipientName}`
+    : '[Destinatario]';
+
+  // Build pricing summary
+  const pricingSummary = buildPricingSummary(data.pricing);
+
   return {
     client: {
       group_name: data.client?.group_name || '[Nombre del Cliente]',
@@ -560,6 +574,9 @@ export function buildCompilerContext(data: {
       employee_count: data.client?.employee_count,
       contact_name: data.recipientName,
       contact_position: data.recipientPosition,
+      // Extended properties
+      entities: entitiesList,
+      primary_contact: primaryContact,
     },
     entities: (data.entities || []).map(e => ({
       legal_name: e.legal_name,
@@ -584,6 +601,8 @@ export function buildCompilerContext(data: {
       total_fee: data.pricing?.initialPayment || 0,
       monthly_retainer: data.pricing?.monthlyRetainer || 0,
       retainer_months: data.pricing?.retainerMonths || 12,
+      // Extended property
+      pricing_summary: pricingSummary,
     },
     case: {
       title: data.caseData?.title || '[Título del Caso]',
@@ -602,4 +621,30 @@ export function buildCompilerContext(data: {
       disclaimers_text: data.firmSettings.disclaimers_text || undefined,
     } : undefined,
   };
+}
+
+/**
+ * Builds a formatted pricing summary string
+ */
+function buildPricingSummary(pricing?: {
+  initialPayment: number;
+  monthlyRetainer: number;
+  retainerMonths: number;
+}): string {
+  if (!pricing) return '[Honorarios por definir]';
+
+  const formatCurrency = (n: number) =>
+    new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n);
+
+  const parts: string[] = [];
+
+  if (pricing.initialPayment > 0) {
+    parts.push(`Pago inicial: ${formatCurrency(pricing.initialPayment)}`);
+  }
+
+  if (pricing.monthlyRetainer > 0) {
+    parts.push(`Iguala mensual: ${formatCurrency(pricing.monthlyRetainer)} (${pricing.retainerMonths} meses)`);
+  }
+
+  return parts.length > 0 ? parts.join(' | ') : '[Sin honorarios configurados]';
 }
