@@ -1129,7 +1129,6 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                     isGeneratingContent={isGeneratingContent}
                     generatedServicesContent={generatedServicesContent}
                     editedServicesContent={editedServicesContent}
-                    aiPreSelectedCount={services.filter(s => s.confidence >= 85).length}
                     onInsertServicesContent={(text) => {
                       setServicesNarrative(text);
                       toast({
