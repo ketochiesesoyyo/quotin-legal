@@ -353,25 +353,65 @@ export function CompiledDocumentPreview({
         </div>
       )}
 
-      {/* Warnings */}
-      {compiled.warnings.length > 0 && (
-        <div className="p-3 border-b">
-          <Alert variant="destructive" className="py-2">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription className="text-xs">
-              {compiled.warnings.length} variable(s) no pudieron resolverse:
-              <ul className="mt-1 list-disc list-inside">
-                {compiled.warnings.slice(0, 3).map((w, i) => (
-                  <li key={i}>{w}</li>
-                ))}
-                {compiled.warnings.length > 3 && (
-                  <li>...y {compiled.warnings.length - 3} más</li>
-                )}
-              </ul>
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
+      {/* Warnings - categorized by type */}
+      {compiled.warnings.length > 0 && (() => {
+        const configErrors = compiled.warnings.filter(w => 
+          w.includes('no tiene instrucciones') || w.includes('no tiene fuente')
+        );
+        const pendingAI = compiled.warnings.filter(w => w.includes('pendiente de generar'));
+        const otherWarnings = compiled.warnings.filter(w => 
+          !w.includes('no tiene instrucciones') && 
+          !w.includes('no tiene fuente') && 
+          !w.includes('pendiente de generar')
+        );
+        
+        return (
+          <>
+            {configErrors.length > 0 && (
+              <div className="p-3 border-b">
+                <Alert variant="destructive" className="py-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    <strong>Plantilla incompleta:</strong> Esta propuesta usa un snapshot de plantilla con {configErrors.length} bloque(s) mal configurado(s).
+                    <p className="mt-1 text-muted-foreground">
+                      Esta propuesta fue creada con una plantilla que tenía bloques sin configurar. 
+                      Puedes continuar en Vista Clásica o crear una nueva propuesta con la plantilla corregida.
+                    </p>
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+            {pendingAI.length > 0 && !configErrors.length && (
+              <div className="p-3 border-b">
+                <Alert className="py-2 border-amber-200 bg-amber-50">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="text-xs text-amber-700">
+                    {pendingAI.length} bloque(s) dinámico(s) pendientes de generación con IA.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+            {otherWarnings.length > 0 && (
+              <div className="p-3 border-b">
+                <Alert variant="destructive" className="py-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    {otherWarnings.length} variable(s) no pudieron resolverse:
+                    <ul className="mt-1 list-disc list-inside">
+                      {otherWarnings.slice(0, 3).map((w, i) => (
+                        <li key={i}>{w}</li>
+                      ))}
+                      {otherWarnings.length > 3 && (
+                        <li>...y {otherWarnings.length - 3} más</li>
+                      )}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {/* Compiled content */}
       <ScrollArea className="flex-1 min-h-0">
