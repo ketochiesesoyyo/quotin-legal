@@ -38,17 +38,34 @@ export function TextSelectionToolbar({
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const isInitialMount = useRef(true);
 
-  // Handle click outside to close
+  // Handle click outside to close - with delay to prevent immediate close after selection
   useEffect(() => {
+    // Skip the first render to avoid closing on the selection mouseup
+    isInitialMount.current = true;
+    
     function handleClickOutside(event: MouseEvent) {
+      // Ignore the first mousedown after toolbar appears (from text selection)
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        return;
+      }
+      
       if (toolbarRef.current && !toolbarRef.current.contains(event.target as Node)) {
         onClose();
       }
     }
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    // Add listener after a small delay to avoid catching the selection event
+    const timeoutId = setTimeout(() => {
+      document.addEventListener("mousedown", handleClickOutside);
+    }, 100);
+    
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, [onClose]);
 
   // Handle escape key
