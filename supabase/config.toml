@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.parse-services-from-text]
 verify_jwt = false
+
+[functions.rewrite-text]
+verify_jwt = false

@@ -1,14 +1,26 @@
-import { FileText, Eye, ArrowRight, Sparkles } from "lucide-react";
+import { useState, useCallback } from "react";
+import { FileText, Eye, ArrowRight, Sparkles, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import type { ProposalPreviewData, ServiceDescription } from "./types";
+import { EditableSection } from "./EditableSection";
+import { TextSelectionToolbar } from "./TextSelectionToolbar";
+import type { ProposalPreviewData, ServiceDescription, TextOverride } from "./types";
 
 interface ProposalPreviewProps {
   data: ProposalPreviewData;
   isGenerating: boolean;
   onGenerate: () => void;
+  // New props for inline editing
+  textOverrides?: TextOverride[];
+  onTextOverride?: (override: TextOverride) => void;
+  onRestoreOriginal?: (sectionId: string) => void;
+  onAIRewrite?: (originalText: string, instruction: string, sectionId: string) => Promise<string>;
+  clientContext?: {
+    clientName: string;
+    industry: string | null;
+  };
 }
 
 // Fixed transition texts - used as fallbacks when AI content not generated
@@ -80,14 +92,6 @@ const numberToSpanishWords = (num: number): string => {
   return result.charAt(0).toUpperCase() + result.slice(1);
 };
 
-// Helper to get salutation prefix
-const getSalutationPrefix = (fullName: string) => {
-  // Simple heuristic - could be improved
-  const firstName = fullName.split(" ")[0].toLowerCase();
-  const femaleNames = ["maria", "ana", "carmen", "laura", "patricia", "martha", "rosa", "guadalupe", "elena", "adriana"];
-  return femaleNames.some((n) => firstName.includes(n)) ? "Sra." : "Sr.";
-};
-
 // Helper to get last name
 const getLastName = (fullName: string) => {
   const parts = fullName.trim().split(" ");
@@ -99,28 +103,125 @@ const getLastName = (fullName: string) => {
   return parts[0];
 };
 
+interface SelectionState {
+  text: string;
+  sectionId: string;
+  position: { top: number; left: number };
+}
+
 export function ProposalPreview({
   data,
   isGenerating,
   onGenerate,
+  textOverrides = [],
+  onTextOverride,
+  onRestoreOriginal,
+  onAIRewrite,
+  clientContext,
 }: ProposalPreviewProps) {
   const hasContent = data.background || data.selectedServices.length > 0;
   const firmName = data.firmSettings?.name || "Nuestra Firma";
   const hasGeneratedContent = !!data.generatedContent;
   
+  // State for text selection toolbar
+  const [selection, setSelection] = useState<SelectionState | null>(null);
+  const [isRewriting, setIsRewriting] = useState(false);
+  
+  // Check if editing is enabled
+  const isEditingEnabled = !!onTextOverride;
+  
+  // Helper to get override for a section
+  const getOverride = useCallback((sectionId: string): TextOverride | undefined => {
+    return textOverrides.find(o => o.sectionId === sectionId);
+  }, [textOverrides]);
+  
+  // Helper to get text with override applied
+  const getTextWithOverride = useCallback((sectionId: string, originalText: string): string => {
+    const override = getOverride(sectionId);
+    return override?.newText || originalText;
+  }, [getOverride]);
+  
+  // Handler for text selection
+  const handleTextSelection = useCallback((selectionData: SelectionState) => {
+    if (!isEditingEnabled) return;
+    setSelection(selectionData);
+  }, [isEditingEnabled]);
+  
+  // Handler for manual edit
+  const handleManualEdit = useCallback((newText: string) => {
+    if (!selection || !onTextOverride) return;
+    
+    onTextOverride({
+      sectionId: selection.sectionId,
+      originalText: selection.text,
+      newText,
+      isAIGenerated: false,
+    });
+    
+    setSelection(null);
+  }, [selection, onTextOverride]);
+  
+  // Handler for AI rewrite
+  const handleAIRewriteRequest = useCallback(async (instruction: string): Promise<string> => {
+    if (!selection || !onAIRewrite) {
+      throw new Error("No selection or AI rewrite handler");
+    }
+    
+    setIsRewriting(true);
+    try {
+      const result = await onAIRewrite(selection.text, instruction, selection.sectionId);
+      return result;
+    } finally {
+      setIsRewriting(false);
+    }
+  }, [selection, onAIRewrite]);
+  
+  // Accept AI rewrite result
+  const handleAcceptAIRewrite = useCallback((newText: string, instruction: string) => {
+    if (!selection || !onTextOverride) return;
+    
+    onTextOverride({
+      sectionId: selection.sectionId,
+      originalText: selection.text,
+      newText,
+      isAIGenerated: true,
+      instruction,
+    });
+    
+    setSelection(null);
+  }, [selection, onTextOverride]);
+  
   // Helper to get generated description for a service
   const getGeneratedServiceDescription = (serviceId: string): ServiceDescription | undefined => {
     return data.generatedContent?.serviceDescriptions?.find(sd => sd.serviceId === serviceId);
   };
+  
+  // Count edits
+  const editCount = textOverrides.length;
 
   return (
     <div className="h-full flex flex-col bg-card border rounded-lg overflow-hidden min-h-0">
       {/* Header */}
       <div className="p-4 border-b bg-muted/30 shrink-0">
-        <h2 className="font-semibold flex items-center gap-2">
-          <Eye className="h-5 w-5" />
-          Vista previa
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold flex items-center gap-2">
+            <Eye className="h-5 w-5" />
+            Vista previa
+          </h2>
+          {isEditingEnabled && (
+            <div className="flex items-center gap-2">
+              {editCount > 0 && (
+                <Badge variant="secondary" className="text-xs gap-1">
+                  <Pencil className="h-3 w-3" />
+                  {editCount} {editCount === 1 ? 'edición' : 'ediciones'}
+                </Badge>
+              )}
+              <span className="text-xs text-muted-foreground">
+                Selecciona texto para editar
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Preview Content */}
@@ -164,7 +265,7 @@ export function ProposalPreview({
                 <p className="text-sm">Ciudad de México, a {data.documentDate}</p>
               </div>
 
-{/* ============ DESTINATARIO ============ */}
+              {/* ============ DESTINATARIO ============ */}
               <div className="mb-6">
                 <p className="font-semibold text-sm uppercase">
                   {data.primaryContact?.salutationPrefix || 'Sr.'} {data.primaryContact?.fullName || "[Nombre del Contacto]"}
@@ -210,11 +311,18 @@ export function ProposalPreview({
                   I. ANTECEDENTES Y ALCANCE DE LOS SERVICIOS
                 </h2>
 
-                {/* Background / Client description */}
+                {/* Background / Client description - EDITABLE */}
                 {data.background && (
-                  <p className="text-sm leading-relaxed mb-4 whitespace-pre-line">
-                    {data.background}
-                  </p>
+                  <EditableSection
+                    sectionId="background"
+                    override={getOverride("background")}
+                    onTextSelection={handleTextSelection}
+                    onRestoreOriginal={onRestoreOriginal ? () => onRestoreOriginal("background") : undefined}
+                  >
+                    <p className="text-sm leading-relaxed mb-4 whitespace-pre-line">
+                      {getTextWithOverride("background", data.background)}
+                    </p>
+                  </EditableSection>
                 )}
 
                 {/* Client summary if no background */}
@@ -243,10 +351,19 @@ export function ProposalPreview({
                     <div className="space-y-4 mb-4">
                       {data.selectedServices.map((item, index) => {
                         const generatedDesc = getGeneratedServiceDescription(item.service.id);
-                        const displayText = generatedDesc?.expandedText || item.customText || item.service.standard_text || item.service.description;
+                        const originalText = generatedDesc?.expandedText || item.customText || item.service.standard_text || item.service.description || "";
+                        const sectionId = `service-${item.service.id}`;
+                        const displayText = getTextWithOverride(sectionId, originalText);
                         
                         return (
-                          <div key={item.service.id} className="pl-4">
+                          <EditableSection
+                            key={item.service.id}
+                            sectionId={sectionId}
+                            override={getOverride(sectionId)}
+                            onTextSelection={handleTextSelection}
+                            onRestoreOriginal={onRestoreOriginal ? () => onRestoreOriginal(sectionId) : undefined}
+                            className="pl-4"
+                          >
                             <p className="text-sm">
                               <strong>{String.fromCharCode(97 + index)}) {item.service.name}:</strong>{" "}
                               {displayText}
@@ -262,7 +379,7 @@ export function ProposalPreview({
                                 </ol>
                               </div>
                             )}
-                          </div>
+                          </EditableSection>
                         );
                       })}
                     </div>
@@ -277,17 +394,31 @@ export function ProposalPreview({
                       </div>
                     )}
 
-                    {/* Transition text - only show if generated */}
+                    {/* Transition text - EDITABLE */}
                     {hasGeneratedContent ? (
                       <>
-                        <p className="text-sm leading-relaxed mb-4">
-                          {data.generatedContent?.transitionText}
-                        </p>
-                        {/* Closing text from AI */}
-                        {data.generatedContent?.closingText && (
+                        <EditableSection
+                          sectionId="transition"
+                          override={getOverride("transition")}
+                          onTextSelection={handleTextSelection}
+                          onRestoreOriginal={onRestoreOriginal ? () => onRestoreOriginal("transition") : undefined}
+                        >
                           <p className="text-sm leading-relaxed mb-4">
-                            {data.generatedContent.closingText}
+                            {getTextWithOverride("transition", data.generatedContent?.transitionText || "")}
                           </p>
+                        </EditableSection>
+                        {/* Closing text from AI - EDITABLE */}
+                        {data.generatedContent?.closingText && (
+                          <EditableSection
+                            sectionId="closing-section"
+                            override={getOverride("closing-section")}
+                            onTextSelection={handleTextSelection}
+                            onRestoreOriginal={onRestoreOriginal ? () => onRestoreOriginal("closing-section") : undefined}
+                          >
+                            <p className="text-sm leading-relaxed mb-4">
+                              {getTextWithOverride("closing-section", data.generatedContent.closingText)}
+                            </p>
+                          </EditableSection>
                         )}
                       </>
                     ) : (
@@ -307,7 +438,16 @@ export function ProposalPreview({
                 <section className="mb-6">
                   <h2 className="text-base font-bold mb-4 text-primary">II. PROPUESTA DE HONORARIOS</h2>
 
-                  <p className="text-sm leading-relaxed mb-4">{FIXED_TEXTS.introHonorarios}</p>
+                  <EditableSection
+                    sectionId="pricing-intro"
+                    override={getOverride("pricing-intro")}
+                    onTextSelection={handleTextSelection}
+                    onRestoreOriginal={onRestoreOriginal ? () => onRestoreOriginal("pricing-intro") : undefined}
+                  >
+                    <p className="text-sm leading-relaxed mb-4">
+                      {getTextWithOverride("pricing-intro", FIXED_TEXTS.introHonorarios)}
+                    </p>
+                  </EditableSection>
 
                   <div className="space-y-4 mb-4">
                     {/* Services with description - always shown */}
@@ -390,7 +530,6 @@ export function ProposalPreview({
                           <p className="text-sm ml-4 mb-2">
                             Dicho honorario será cubierto{" "}
                             {data.pricing.installments.map((inst, idx) => {
-                              const amount = (data.pricing.initialPayment * inst.percentage) / 100;
                               const isLast = idx === data.pricing.installments.length - 1;
                               const isSecondToLast = idx === data.pricing.installments.length - 2;
                               
@@ -458,24 +597,38 @@ export function ProposalPreview({
                   <h2 className="text-base font-bold mb-4 text-primary">
                     III. GARANTÍAS DE SATISFACCIÓN
                   </h2>
-                  <p className="text-sm leading-relaxed whitespace-pre-line">
-                    {data.firmSettings.guarantees_text}
-                  </p>
+                  <EditableSection
+                    sectionId="guarantees"
+                    override={getOverride("guarantees")}
+                    onTextSelection={handleTextSelection}
+                    onRestoreOriginal={onRestoreOriginal ? () => onRestoreOriginal("guarantees") : undefined}
+                  >
+                    <p className="text-sm leading-relaxed whitespace-pre-line">
+                      {getTextWithOverride("guarantees", data.firmSettings.guarantees_text)}
+                    </p>
+                  </EditableSection>
                 </section>
               )}
 
               {/* ============ CIERRE ============ */}
               <section className="mb-6">
                 <Separator className="my-4" />
-                {data.firmSettings?.closing_text ? (
-                  <p className="text-sm leading-relaxed whitespace-pre-line">
-                    {data.firmSettings.closing_text}
-                  </p>
-                ) : (
-                  <p className="text-sm leading-relaxed whitespace-pre-line">
-                    {FIXED_TEXTS.despedida}
-                  </p>
-                )}
+                <EditableSection
+                  sectionId="closing-farewell"
+                  override={getOverride("closing-farewell")}
+                  onTextSelection={handleTextSelection}
+                  onRestoreOriginal={onRestoreOriginal ? () => onRestoreOriginal("closing-farewell") : undefined}
+                >
+                  {data.firmSettings?.closing_text ? (
+                    <p className="text-sm leading-relaxed whitespace-pre-line">
+                      {getTextWithOverride("closing-farewell", data.firmSettings.closing_text)}
+                    </p>
+                  ) : (
+                    <p className="text-sm leading-relaxed whitespace-pre-line">
+                      {getTextWithOverride("closing-farewell", FIXED_TEXTS.despedida)}
+                    </p>
+                  )}
+                </EditableSection>
                 <p className="font-bold text-sm mt-6 text-center">{firmName}</p>
               </section>
 
@@ -498,7 +651,7 @@ export function ProposalPreview({
       </ScrollArea>
 
       {/* Generate Button */}
-      <div className="p-4 border-t bg-muted/30">
+      <div className="p-4 border-t bg-muted/30 shrink-0">
         <Button
           className="w-full"
           size="lg"
@@ -515,6 +668,23 @@ export function ProposalPreview({
           )}
         </Button>
       </div>
+
+      {/* Text Selection Toolbar */}
+      {selection && isEditingEnabled && (
+        <TextSelectionToolbar
+          selectedText={selection.text}
+          position={selection.position}
+          onClose={() => setSelection(null)}
+          onManualEdit={handleManualEdit}
+          onAIRewrite={async (instruction) => {
+            const result = await handleAIRewriteRequest(instruction);
+            // After getting result, accept it
+            handleAcceptAIRewrite(result, instruction);
+            return result;
+          }}
+          isRewriting={isRewriting}
+        />
+      )}
     </div>
   );
 }
