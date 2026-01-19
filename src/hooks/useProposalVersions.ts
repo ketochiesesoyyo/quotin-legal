@@ -15,6 +15,7 @@ export interface TextOverrideData {
   newText: string;
   isAIGenerated: boolean;
   instruction?: string;
+  timestamp: string; // ISO timestamp for history tracking
 }
 
 export interface ProposalVersionContent {

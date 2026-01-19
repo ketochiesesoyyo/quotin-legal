@@ -3,11 +3,11 @@
  * 
  * Appears when user selects text in the preview, offering:
  * 1. Manual editing
- * 2. AI-powered rewriting
+ * 2. AI-powered rewriting with preview before applying
  */
 
 import { useState, useRef, useEffect } from "react";
-import { Pencil, Sparkles, X, Check, RefreshCw, Loader2 } from "lucide-react";
+import { Pencil, Sparkles, X, Check, RefreshCw, Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,7 @@ interface TextSelectionToolbarProps {
   onManualEdit: (newText: string) => void;
   onAIRewrite: (instruction: string) => Promise<string>;
   isRewriting?: boolean;
-  useRelativePosition?: boolean; // When true, position is handled by parent
+  useRelativePosition?: boolean;
 }
 
 export function TextSelectionToolbar({
@@ -32,21 +32,20 @@ export function TextSelectionToolbar({
   isRewriting = false,
   useRelativePosition = false,
 }: TextSelectionToolbarProps) {
-  const [mode, setMode] = useState<'initial' | 'edit' | 'ai'>('initial');
+  const [mode, setMode] = useState<'initial' | 'edit' | 'ai' | 'ai-preview'>('initial');
   const [editedText, setEditedText] = useState(selectedText);
   const [aiInstruction, setAiInstruction] = useState("");
   const [aiResult, setAiResult] = useState<string | null>(null);
+  const [editableAiResult, setEditableAiResult] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const isInitialMount = useRef(true);
 
   // Handle click outside to close - with delay to prevent immediate close after selection
   useEffect(() => {
-    // Skip the first render to avoid closing on the selection mouseup
     isInitialMount.current = true;
     
     function handleClickOutside(event: MouseEvent) {
-      // Ignore the first mousedown after toolbar appears (from text selection)
       if (isInitialMount.current) {
         isInitialMount.current = false;
         return;
@@ -57,7 +56,6 @@ export function TextSelectionToolbar({
       }
     }
 
-    // Add listener after a small delay to avoid catching the selection event
     const timeoutId = setTimeout(() => {
       document.addEventListener("mousedown", handleClickOutside);
     }, 100);
@@ -72,7 +70,9 @@ export function TextSelectionToolbar({
   useEffect(() => {
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        if (mode !== 'initial') {
+        if (mode === 'ai-preview') {
+          setMode('ai');
+        } else if (mode !== 'initial') {
           setMode('initial');
           setAiResult(null);
         } else {
@@ -99,6 +99,8 @@ export function TextSelectionToolbar({
     try {
       const result = await onAIRewrite(aiInstruction);
       setAiResult(result);
+      setEditableAiResult(result);
+      setMode('ai-preview'); // Go to preview mode instead of showing inline
     } catch (error) {
       console.error("AI rewrite error:", error);
     } finally {
@@ -106,33 +108,25 @@ export function TextSelectionToolbar({
     }
   };
 
-  const handleAcceptAIResult = () => {
-    if (aiResult) {
-      onManualEdit(aiResult);
+  const handleApplyAIResult = () => {
+    if (editableAiResult) {
+      onManualEdit(editableAiResult);
       onClose();
     }
   };
 
   const handleRegenerate = async () => {
+    setMode('ai');
     setAiResult(null);
-    await handleAIRewrite();
+    setEditableAiResult("");
   };
 
-  // Calculate position adjustments to keep toolbar in view
-  // When using relative positioning, use simpler positioning
-  const adjustedPosition = useRelativePosition
-    ? { top: 0, left: 0 }
-    : {
-        top: Math.max(10, position.top - 45), // Position above selection
-        left: Math.max(10, Math.min(position.left, window.innerWidth - 300)),
-      };
-
   const positionStyles = useRelativePosition
-    ? {} // Position is handled by parent
+    ? {}
     : {
         position: 'fixed' as const,
-        top: adjustedPosition.top,
-        left: adjustedPosition.left,
+        top: Math.max(10, position.top - 45),
+        left: Math.max(10, Math.min(position.left, window.innerWidth - 300)),
       };
 
   return (
@@ -221,7 +215,7 @@ export function TextSelectionToolbar({
         </div>
       )}
 
-      {/* AI rewrite mode */}
+      {/* AI rewrite mode - instruction input */}
       {mode === 'ai' && (
         <div className="w-80 space-y-2">
           <div className="flex items-center justify-between mb-2">
@@ -253,85 +247,134 @@ export function TextSelectionToolbar({
           </div>
 
           {/* Instruction input */}
-          {!aiResult && (
-            <>
-              <Input
-                placeholder="¿Cómo quieres que lo cambie? Ej: Hazlo más conciso"
-                value={aiInstruction}
-                onChange={(e) => setAiInstruction(e.target.value)}
-                className="text-sm"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleAIRewrite();
-                  }
-                }}
-              />
-              <div className="flex flex-wrap gap-1">
-                {["Más formal", "Más conciso", "Más detallado", "Simplificar"].map((suggestion) => (
-                  <Button
-                    key={suggestion}
-                    variant="outline"
-                    size="sm"
-                    className="text-xs h-6 px-2"
-                    onClick={() => {
-                      setAiInstruction(suggestion);
-                    }}
-                  >
-                    {suggestion}
-                  </Button>
-                ))}
-              </div>
-              <div className="flex justify-end">
-                <Button
-                  size="sm"
-                  onClick={handleAIRewrite}
-                  disabled={!aiInstruction.trim() || isProcessing}
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                      Generando...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-3 w-3 mr-1" />
-                      Generar
-                    </>
-                  )}
-                </Button>
-              </div>
-            </>
-          )}
+          <Input
+            placeholder="¿Cómo quieres que lo cambie? Ej: Hazlo más conciso"
+            value={aiInstruction}
+            onChange={(e) => setAiInstruction(e.target.value)}
+            className="text-sm"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleAIRewrite();
+              }
+            }}
+          />
+          <div className="flex flex-wrap gap-1">
+            {["Más formal", "Más conciso", "Más detallado", "Simplificar"].map((suggestion) => (
+              <Button
+                key={suggestion}
+                variant="outline"
+                size="sm"
+                className="text-xs h-6 px-2"
+                onClick={() => setAiInstruction(suggestion)}
+              >
+                {suggestion}
+              </Button>
+            ))}
+          </div>
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              onClick={handleAIRewrite}
+              disabled={!aiInstruction.trim() || isProcessing}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  Generando...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  Generar
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
 
-          {/* AI result */}
-          {aiResult && (
-            <>
-              <div className="text-sm bg-primary/5 border border-primary/20 p-3 rounded max-h-40 overflow-auto">
-                {aiResult}
+      {/* AI Preview mode - show editable result before applying */}
+      {mode === 'ai-preview' && (
+        <div className="w-96 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium flex items-center gap-1">
+              <Sparkles className="h-3 w-3 text-primary" />
+              Vista previa del texto generado
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5"
+              onClick={() => {
+                setMode('ai');
+                setAiResult(null);
+                setEditableAiResult("");
+              }}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+          
+          {/* Comparison view */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Original</p>
+              <div className="text-xs bg-muted/50 p-2 rounded max-h-24 overflow-auto border">
+                {selectedText.length > 200
+                  ? selectedText.substring(0, 200) + "..."
+                  : selectedText}
               </div>
-              <div className="flex justify-between">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRegenerate}
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? (
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-3 w-3 mr-1" />
-                  )}
-                  Regenerar
-                </Button>
-                <Button size="sm" onClick={handleAcceptAIResult}>
-                  <Check className="h-3 w-3 mr-1" />
-                  Aceptar
-                </Button>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-primary flex items-center gap-1">
+                <ArrowRight className="h-2.5 w-2.5" />
+                Nuevo
+              </p>
+              <div className="text-xs text-primary/80 bg-primary/5 border border-primary/20 p-2 rounded max-h-24 overflow-auto">
+                {aiResult && aiResult.length > 200
+                  ? aiResult.substring(0, 200) + "..."
+                  : aiResult}
               </div>
-            </>
-          )}
+            </div>
+          </div>
+          
+          {/* Editable textarea for final adjustments */}
+          <div className="space-y-1">
+            <p className="text-xs font-medium flex items-center gap-1">
+              <Pencil className="h-3 w-3" />
+              Ajusta el texto antes de aplicar (opcional)
+            </p>
+            <Textarea
+              value={editableAiResult}
+              onChange={(e) => setEditableAiResult(e.target.value)}
+              className="min-h-[100px] text-sm"
+              placeholder="Edita el texto generado aquí..."
+            />
+          </div>
+          
+          {/* Action buttons */}
+          <div className="flex justify-between gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRegenerate}
+              disabled={isProcessing}
+            >
+              <RefreshCw className="h-3 w-3 mr-1" />
+              Regenerar
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleApplyAIResult}
+              disabled={!editableAiResult.trim()}
+              className="gap-1"
+            >
+              <Check className="h-3 w-3" />
+              Actualizar texto
+            </Button>
+          </div>
         </div>
       )}
     </div>
