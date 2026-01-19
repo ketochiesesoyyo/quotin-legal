@@ -1,9 +1,10 @@
-import { useState, useCallback } from "react";
-import { FileText, Eye, ArrowRight, Sparkles, Pencil } from "lucide-react";
+import { useState, useCallback, useRef } from "react";
+import { FileText, Eye, ArrowRight, Sparkles, Pencil, MousePointer2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { EditableSection } from "./EditableSection";
 import { TextSelectionToolbar } from "./TextSelectionToolbar";
 import type { ProposalPreviewData, ServiceDescription, TextOverride } from "./types";
@@ -123,12 +124,19 @@ export function ProposalPreview({
   const firmName = data.firmSettings?.name || "Nuestra Firma";
   const hasGeneratedContent = !!data.generatedContent;
   
+  // Reference to preview container for relative positioning
+  const previewContainerRef = useRef<HTMLDivElement>(null);
+  
   // State for text selection toolbar
   const [selection, setSelection] = useState<SelectionState | null>(null);
   const [isRewriting, setIsRewriting] = useState(false);
   
-  // Check if editing is enabled
-  const isEditingEnabled = !!onTextOverride;
+  // Explicit toggle for edit mode
+  const [isEditModeActive, setIsEditModeActive] = useState(false);
+  
+  // Check if editing is enabled (has handlers AND mode is active)
+  const canEdit = !!onTextOverride;
+  const isEditingEnabled = canEdit && isEditModeActive;
   
   // Helper to get override for a section
   const getOverride = useCallback((sectionId: string): TextOverride | undefined => {
@@ -141,10 +149,27 @@ export function ProposalPreview({
     return override?.newText || originalText;
   }, [getOverride]);
   
-  // Handler for text selection
-  const handleTextSelection = useCallback((selectionData: SelectionState) => {
-    if (!isEditingEnabled) return;
-    setSelection(selectionData);
+  // Handler for text selection - calculates position relative to container
+  const handleTextSelection = useCallback((selectionData: {
+    text: string;
+    sectionId: string;
+    position: { top: number; left: number };
+  }) => {
+    if (!isEditingEnabled || !previewContainerRef.current) return;
+    
+    // Get container bounds to calculate relative position
+    const containerRect = previewContainerRef.current.getBoundingClientRect();
+    
+    // Adjust position to be relative to the container
+    const adjustedPosition = {
+      top: selectionData.position.top - containerRect.top,
+      left: selectionData.position.left - containerRect.left,
+    };
+    
+    setSelection({
+      ...selectionData,
+      position: adjustedPosition,
+    });
   }, [isEditingEnabled]);
   
   // Handler for manual edit
@@ -200,7 +225,7 @@ export function ProposalPreview({
   const editCount = textOverrides.length;
 
   return (
-    <div className="h-full flex flex-col bg-card border rounded-lg overflow-hidden min-h-0">
+    <div className="h-full flex flex-col bg-card border rounded-lg overflow-hidden min-h-0 relative">
       {/* Header */}
       <div className="p-4 border-b bg-muted/30 shrink-0">
         <div className="flex items-center justify-between">
@@ -208,25 +233,59 @@ export function ProposalPreview({
             <Eye className="h-5 w-5" />
             Vista previa
           </h2>
-          {isEditingEnabled && (
-            <div className="flex items-center gap-2">
-              {editCount > 0 && (
-                <Badge variant="secondary" className="text-xs gap-1">
-                  <Pencil className="h-3 w-3" />
-                  {editCount} {editCount === 1 ? 'edición' : 'ediciones'}
-                </Badge>
-              )}
-              <span className="text-xs text-muted-foreground">
-                Selecciona texto para editar
-              </span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {/* Edit count badge */}
+            {editCount > 0 && (
+              <Badge variant="secondary" className="text-xs gap-1">
+                <Pencil className="h-3 w-3" />
+                {editCount} {editCount === 1 ? 'edición' : 'ediciones'}
+              </Badge>
+            )}
+            
+            {/* Toggle edit mode button */}
+            {canEdit && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={isEditModeActive ? "default" : "outline"}
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => {
+                        setIsEditModeActive(!isEditModeActive);
+                        setSelection(null);
+                      }}
+                    >
+                      <MousePointer2 className="h-4 w-4" />
+                      {isEditModeActive ? "Modo edición activo" : "Editar texto"}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isEditModeActive 
+                      ? "Selecciona texto en la vista previa para editarlo manualmente o con IA"
+                      : "Activa el modo de edición para modificar texto directamente"
+                    }
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
         </div>
+        
+        {/* Active edit mode indicator */}
+        {isEditModeActive && (
+          <div className="mt-2 flex items-center gap-2 text-xs text-primary bg-primary/5 border border-primary/20 rounded-md p-2">
+            <Sparkles className="h-3.5 w-3.5 shrink-0" />
+            <span>
+              <strong>Modo edición activo:</strong> Selecciona cualquier texto para editarlo manualmente o reescribirlo con IA
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Preview Content */}
       <ScrollArea className="flex-1 min-h-0">
-        <div className="p-6">
+        <div ref={previewContainerRef} className="p-6 relative">
           {!hasContent ? (
             <div className="text-center py-20">
               <FileText className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
@@ -647,6 +706,33 @@ export function ProposalPreview({
               </div>
             </div>
           )}
+          
+          {/* Text Selection Toolbar - positioned within the preview container */}
+          {selection && isEditingEnabled && (
+            <div 
+              className="absolute z-50"
+              style={{
+                top: selection.position.top - 50, // Position above the selection
+                left: Math.max(10, Math.min(selection.position.left, 300)),
+                transform: 'translateX(-50%)',
+              }}
+            >
+              <TextSelectionToolbar
+                selectedText={selection.text}
+                position={{ top: 0, left: 0 }} // Position is handled by parent div
+                onClose={() => setSelection(null)}
+                onManualEdit={handleManualEdit}
+                onAIRewrite={async (instruction) => {
+                  const result = await handleAIRewriteRequest(instruction);
+                  // After getting result, accept it
+                  handleAcceptAIRewrite(result, instruction);
+                  return result;
+                }}
+                isRewriting={isRewriting}
+                useRelativePosition={true}
+              />
+            </div>
+          )}
         </div>
       </ScrollArea>
 
@@ -668,23 +754,6 @@ export function ProposalPreview({
           )}
         </Button>
       </div>
-
-      {/* Text Selection Toolbar */}
-      {selection && isEditingEnabled && (
-        <TextSelectionToolbar
-          selectedText={selection.text}
-          position={selection.position}
-          onClose={() => setSelection(null)}
-          onManualEdit={handleManualEdit}
-          onAIRewrite={async (instruction) => {
-            const result = await handleAIRewriteRequest(instruction);
-            // After getting result, accept it
-            handleAcceptAIRewrite(result, instruction);
-            return result;
-          }}
-          isRewriting={isRewriting}
-        />
-      )}
     </div>
   );
 }
