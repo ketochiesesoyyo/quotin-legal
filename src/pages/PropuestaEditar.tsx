@@ -82,6 +82,7 @@ export default function PropuestaEditar() {
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [generatedServicesContent, setGeneratedServicesContent] = useState<string | undefined>();
   const [editedServicesContent, setEditedServicesContent] = useState<string | undefined>();
+  const [servicesNarrative, setServicesNarrative] = useState<string>("");
   const [recipientData, setRecipientData] = useState<RecipientData>({
     fullName: "[Nombre del Contacto]",
     position: null,
@@ -881,6 +882,7 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
         rfc: e.rfc,
       })),
       background: proposalBackground,
+      servicesNarrative,
       validatedData: {
         rfc: entities[0]?.rfc || null,
         opinion32d: null,
@@ -916,7 +918,7 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
         : undefined,
       generatedContent: generatedContent || undefined,
     };
-  }, [client, entities, proposalBackground, services, customInitialPayment, customMonthlyRetainer, customRetainerMonths, installments, retainerStartDescription, canCancelWithoutPenalty, pricingMode, firmSettings, recipientData, generatedContent]);
+  }, [client, entities, proposalBackground, servicesNarrative, services, customInitialPayment, customMonthlyRetainer, customRetainerMonths, installments, retainerStartDescription, canCancelWithoutPenalty, pricingMode, firmSettings, recipientData, generatedContent]);
 
   // Build compiler context for template-based preview
   const compilerContext = useMemo(() => {
@@ -1128,16 +1130,10 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                     generatedServicesContent={generatedServicesContent}
                     editedServicesContent={editedServicesContent}
                     onInsertServicesContent={(text) => {
-                      // Insert the services content into the proposal
-                      setGeneratedContent(prev => prev ? {
-                        ...prev,
-                        servicesText: text
-                      } : null);
-                      // Also update the generated services content for persistence
-                      setGeneratedServicesContent(text);
+                      setServicesNarrative(text);
                       toast({
-                        title: "Contenido insertado",
-                        description: "El texto de servicios ha sido insertado en la propuesta",
+                        title: "Servicios insertados",
+                        description: "La sección I se actualizó con el texto de servicios",
                       });
                     }}
                     onSaveServicesContentEdit={(text) => {
