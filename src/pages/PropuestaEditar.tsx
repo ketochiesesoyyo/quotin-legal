@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,13 +6,10 @@ import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage, formatErrorForToast, withRetry } from "@/lib/error-utils";
 import { useProposalVersions, type ProposalVersionContent } from "@/hooks/useProposalVersions";
 import { useAuditLog } from "@/hooks/useAuditLog";
-import { Loader2, FileText, Save, Wand2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { EditorHeader } from "@/components/propuestas/EditorHeader";
 import { ProgressIndicator } from "@/components/propuestas/ProgressIndicator";
 import { BackgroundSection } from "@/components/propuestas/BackgroundSection";
-import { BackgroundAndServicesSection } from "@/components/propuestas/BackgroundAndServicesSection";
-import { HonorariosSection } from "@/components/propuestas/HonorariosSection";
-import { GuaranteesSection } from "@/components/propuestas/GuaranteesSection";
 import { ValidatedDataSection } from "@/components/propuestas/ValidatedDataSection";
 import { PricingModeSelector } from "@/components/propuestas/PricingModeSelector";
 import { ServicesSection } from "@/components/propuestas/ServicesSection";
@@ -23,9 +20,6 @@ import { RecipientSection, type RecipientData } from "@/components/propuestas/Re
 import { TemplateSelector } from "@/components/propuestas/TemplateSelector";
 import { CompiledDocumentPreview, buildCompilerContext } from "@/components/propuestas/CompiledDocumentPreview";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -97,10 +91,6 @@ export default function PropuestaEditar() {
 
   // Sprint 4: Text overrides for inline preview editing
   const [textOverrides, setTextOverrides] = useState<TextOverride[]>([]);
-
-  // Sprint 5: Structured editor sections
-  const [isBackgroundConfirmed, setIsBackgroundConfirmed] = useState(false);
-  const backgroundSectionRef = useRef<HTMLDivElement>(null);
 
   // Sprint 3: Proposal versions and audit logging
   const { saveVersion, versions, latestVersionNumber, isSaving: isSavingVersion } = useProposalVersions(id);
@@ -955,131 +945,91 @@ export default function PropuestaEditar() {
         annualRevenue={client?.annual_revenue || "No especificado"}
       />
 
-      {/* Two Panel Layout - grid to prevent overlap */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_1fr] overflow-hidden">
+      {/* Two Panel Layout */}
+      <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Editor */}
-        <div className="w-full min-w-0 min-h-0 border-b lg:border-b-0 lg:border-r overflow-hidden relative z-10">
+        <div className="w-1/2 border-r overflow-hidden">
           <ScrollArea className="h-full">
             <div className="p-6 space-y-6">
               {/* Progress */}
               <ProgressIndicator steps={progressSteps} progress={progress} />
 
-              {/* 1. MIS NOTAS - Input del usuario */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base font-semibold flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-muted-foreground" />
-                      MIS NOTAS
-                    </CardTitle>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={async () => {
-                        if (!userNotes.trim()) return;
-                        setIsSavingNotes(true);
-                        try {
-                          const { error: caseError } = await supabase
-                            .from("cases")
-                            .update({ notes: userNotes } as any)
-                            .eq("id", id!);
-                          
-                          if (caseError) throw caseError;
-                          
-                          const { data: { user } } = await supabase.auth.getUser();
-                          await supabase
-                            .from("case_notes_history")
-                            .insert({
-                              case_id: id!,
-                              notes: userNotes,
-                              created_by: user?.id,
-                            } as any);
-                          
-                          toast({ title: "Notas guardadas" });
-                          queryClient.invalidateQueries({ queryKey: ["case", id] });
-                        } catch (error) {
-                          toast({
-                            title: "Error al guardar notas",
-                            description: getErrorMessage(error),
-                            variant: "destructive",
-                          });
-                        } finally {
-                          setIsSavingNotes(false);
-                        }
-                      }}
-                      disabled={isSavingNotes || !userNotes.trim()}
-                    >
-                      {isSavingNotes ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                      <span className="ml-1">Guardar</span>
-                    </Button>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Captura los puntos clave de la reunión con el cliente
-                  </p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Textarea
-                    placeholder="Escribe aquí las notas de la reunión, necesidades del cliente, puntos importantes discutidos..."
-                    value={userNotes}
-                    onChange={(e) => setUserNotes(e.target.value)}
-                    rows={6}
-                    className="resize-none"
-                  />
-                  <Button
-                    onClick={async () => {
-                      if (!userNotes.trim()) return;
-                      setIsAIProcessing(true);
-                      try {
-                        await new Promise((resolve) => setTimeout(resolve, 2000));
-                        
-                        const clientName = client?.alias || client?.group_name || "la Empresa";
-                        const industry = client?.industry || "sus actividades comerciales";
-                        const entityCount = entities.length;
-                        const employeeCount = client?.employee_count || 0;
-                        
-                        const generatedBackground = `Derivado de la información que amablemente nos ha sido proporcionada, sabemos que ${clientName} se dedica principalmente a ${industry}. Asimismo, sabemos que actualmente operan con ${entityCount} razón${entityCount !== 1 ? 'es' : ''} social${entityCount !== 1 ? 'es' : ''}, así como una plantilla laboral de aproximadamente ${employeeCount} colaboradores, sumado a los activos tangibles e intangibles propios de su operación.
+              {/* Background */}
+              <BackgroundSection
+                caseId={id!}
+                userNotes={userNotes}
+                proposalBackground={proposalBackground}
+                aiSuggestion={aiSuggestion}
+                isAIProcessing={isAIProcessing}
+                isSaving={isSavingNotes}
+                onUpdateNotes={setUserNotes}
+                onSaveNotes={async (notes: string) => {
+                  setIsSavingNotes(true);
+                  try {
+                    // Update case notes
+                    const { error: caseError } = await supabase
+                      .from("cases")
+                      .update({ notes } as any)
+                      .eq("id", id!);
+                    
+                    if (caseError) throw caseError;
+                    
+                    // Save to notes history
+                    const { data: { user } } = await supabase.auth.getUser();
+                    const { error: historyError } = await supabase
+                      .from("case_notes_history")
+                      .insert({
+                        case_id: id!,
+                        notes,
+                        created_by: user?.id,
+                      } as any);
+                    
+                    if (historyError) throw historyError;
+                    
+                    toast({ title: "Notas guardadas", description: "Se ha creado una versión en el historial" });
+                    queryClient.invalidateQueries({ queryKey: ["case", id] });
+                  } catch (error) {
+                    toast({
+                      title: "Error al guardar notas",
+                      description: getErrorMessage(error),
+                      variant: "destructive",
+                    });
+                  } finally {
+                    setIsSavingNotes(false);
+                  }
+                }}
+                onUpdateProposalBackground={setProposalBackground}
+                onRequestAIAnalysis={async () => {
+                  if (!userNotes.trim()) return;
+                  setIsAIProcessing(true);
+                  try {
+                    // Simulate AI processing - in production this would call the edge function
+                    await new Promise((resolve) => setTimeout(resolve, 2000));
+                    
+                    // Generate professional background text (this would come from AI in production)
+                    const clientName = client?.alias || client?.group_name || "la Empresa";
+                    const industry = client?.industry || "sus actividades comerciales";
+                    const entityCount = entities.length;
+                    const employeeCount = client?.employee_count || 0;
+                    
+                    const generatedBackground = `Derivado de la información que amablemente nos ha sido proporcionada, sabemos que ${clientName} se dedica principalmente a ${industry}. Asimismo, sabemos que actualmente operan con ${entityCount} razón${entityCount !== 1 ? 'es' : ''} social${entityCount !== 1 ? 'es' : ''}, así como una plantilla laboral de aproximadamente ${employeeCount} colaboradores, sumado a los activos tangibles e intangibles propios de su operación.
 
 Finalmente, sabemos que gracias al crecimiento sostenido que han tenido, las Empresas requieren la implementación de servicios especializados que permitan optimizar su estructura corporativa y fiscal, blindar patrimonialmente a los socios, y aprovechar al máximo los activos con que cuenta la organización.
 
 Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en la medida de lo posible y con total apego a derecho, los recursos económicos, humanos y materiales con que cuentan, así como implementar una estructura corporativa sólida de cara a las proyecciones de crecimiento que se tienen.`;
-                        
-                        setAiSuggestion(generatedBackground);
-                        setProposalBackground(generatedBackground);
-                        
-                        // Scroll to background section after generation
-                        setTimeout(() => {
-                          backgroundSectionRef.current?.scrollIntoView({ 
-                            behavior: 'smooth', 
-                            block: 'start' 
-                          });
-                        }, 100);
-                      } catch (error) {
-                        toast({
-                          title: "Error",
-                          description: "No se pudo generar los antecedentes",
-                          variant: "destructive",
-                        });
-                      } finally {
-                        setIsAIProcessing(false);
-                      }
-                    }}
-                    disabled={isAIProcessing || !userNotes.trim()}
-                    className="w-full"
-                  >
-                    {isAIProcessing ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Generando...
-                      </>
-                    ) : (
-                      <>
-                        <Wand2 className="h-4 w-4 mr-2" />
-                        Generar con IA
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
+                    
+                    setAiSuggestion(generatedBackground);
+                  } catch (error) {
+                    toast({
+                      title: "Error",
+                      description: "No se pudo generar los antecedentes",
+                      variant: "destructive",
+                    });
+                  } finally {
+                    setIsAIProcessing(false);
+                  }
+                }}
+              />
 
               {/* Recipient Section - who the proposal is addressed to */}
               <RecipientSection
@@ -1088,93 +1038,63 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                 onUpdateRecipient={setRecipientData}
               />
 
+              {/* Validated Data */}
+              <ValidatedDataSection data={validatedData} />
+
               {/* Document Template Selector (Sprint 2) */}
               <TemplateSelector
                 selectedTemplateId={selectedDocumentTemplate?.id || null}
                 onSelectTemplate={(template) => {
                   setSelectedDocumentTemplate(template);
+                  // Switch to template preview mode when a template is selected
                   if (template) {
                     setPreviewMode('template');
                   }
                 }}
               />
 
-              {/* I. ANTECEDENTES Y ALCANCE - Servicios */}
-              <BackgroundAndServicesSection
-                sectionRef={backgroundSectionRef}
-                aiSuggestion={aiSuggestion || null}
-                isAIProcessing={isAIProcessing}
-                hasGenerated={!!aiSuggestion || !!proposalBackground}
-                services={services}
-                isConfirmed={isBackgroundConfirmed}
-                onUpdateBackground={(text) => setProposalBackground(text)}
-                onToggleService={handleToggleService}
-                onConfirm={() => {
-                  setIsBackgroundConfirmed(true);
-                  // Recalculate pricing from selected services
-                  recalculatePricingFromServices(services);
-                  toast({
-                    title: "Servicios confirmados",
-                    description: `${services.filter(s => s.isSelected).length} servicios seleccionados`,
-                  });
-                }}
-                onRegenerate={async () => {
-                  if (!userNotes.trim()) return;
-                  setIsAIProcessing(true);
-                  try {
-                    await new Promise((resolve) => setTimeout(resolve, 2000));
-                    
-                    const clientName = client?.alias || client?.group_name || "la Empresa";
-                    const industry = client?.industry || "sus actividades comerciales";
-                    const entityCount = entities.length;
-                    const employeeCount = client?.employee_count || 0;
-                    
-                    const generatedBackground = `[REGENERADO] Derivado de la información que amablemente nos ha sido proporcionada, sabemos que ${clientName} se dedica principalmente a ${industry}. Operan con ${entityCount} razón${entityCount !== 1 ? 'es' : ''} social${entityCount !== 1 ? 'es' : ''} y una plantilla de ${employeeCount} colaboradores.
-
-Por lo anterior, será necesario analizar esquemas que permitan eficientizar los recursos económicos, humanos y materiales, así como implementar una estructura corporativa sólida.`;
-                    
-                    setAiSuggestion(generatedBackground);
-                    setProposalBackground(generatedBackground);
-                  } finally {
-                    setIsAIProcessing(false);
-                  }
-                }}
-                onEdit={() => setIsBackgroundConfirmed(false)}
-              />
-
-              {/* II. PROPUESTA DE HONORARIOS */}
-              <HonorariosSection
+              {/* Pricing Mode Selector - always visible */}
+              <PricingModeSelector
                 pricingMode={pricingMode}
                 onPricingModeChange={handlePricingModeChange}
-                selectedServices={services.filter(s => s.isSelected)}
-                pricingTemplates={pricingTemplates}
-                selectedPricingId={selectedPricingId}
-                customInitialPayment={customInitialPayment}
-                customMonthlyRetainer={customMonthlyRetainer}
-                customRetainerMonths={customRetainerMonths}
-                installments={installments}
-                retainerStartDescription={retainerStartDescription}
-                canCancelWithoutPenalty={canCancelWithoutPenalty}
-                onSelectTemplate={handleSelectTemplate}
-                onUpdatePricing={handleUpdatePricing}
-                onUpdateServiceFee={handleUpdateServiceFee}
-                isConfirmed={isBackgroundConfirmed}
+                preSelectedCount={services.filter(s => s.confidence >= 80).length}
+                selectedCount={services.filter(s => s.isSelected).length}
               />
 
-              {/* III. GARANTÍAS DE SATISFACCIÓN */}
-              <GuaranteesSection
-                guaranteesText={firmSettings?.guarantees_text || null}
-                disclaimersText={firmSettings?.disclaimers_text || null}
-                closingText={firmSettings?.closing_text || null}
-                canEdit={true}
+              {/* Pricing Section - appears BEFORE services when in global mode */}
+              {pricingMode === 'global' && (
+                <PricingSection
+                  templates={pricingTemplates}
+                  selectedTemplateId={selectedPricingId}
+                  customInitialPayment={customInitialPayment}
+                  customMonthlyRetainer={customMonthlyRetainer}
+                  customRetainerMonths={customRetainerMonths}
+                  installments={installments}
+                  retainerStartDescription={retainerStartDescription}
+                  canCancelWithoutPenalty={canCancelWithoutPenalty}
+                  onSelectTemplate={handleSelectTemplate}
+                  onUpdatePricing={handleUpdatePricing}
+                />
+              )}
+
+              {/* Services List - without mode selector since it's now separate */}
+              <ServicesSection
+                services={services}
+                pricingMode={pricingMode}
+                onToggleService={handleToggleService}
+                onUpdateCustomText={handleUpdateCustomText}
+                onUpdateServiceFee={handleUpdateServiceFee}
+                showModeSelector={false}
+                onGenerateContent={handleGenerateContent}
+                isGeneratingContent={isGeneratingContent}
+                hasGeneratedContent={!!generatedContent}
               />
             </div>
           </ScrollArea>
         </div>
 
         {/* Right Panel - Preview with Tabs */}
-        <div className="w-full min-w-0 min-h-0 flex flex-col overflow-hidden isolate relative z-0">
-          <div className="p-6 flex-1 flex flex-col min-h-0 overflow-hidden">
+        <div className="w-1/2 p-6 flex flex-col min-h-0">
           <Tabs value={previewMode} onValueChange={(v) => setPreviewMode(v as 'classic' | 'template')} className="flex-1 flex flex-col min-h-0">
             <TabsList className="mb-4 shrink-0">
               <TabsTrigger value="classic">Vista Clásica</TabsTrigger>
@@ -1213,7 +1133,6 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar los
               )}
             </TabsContent>
           </Tabs>
-          </div>
         </div>
       </div>
 

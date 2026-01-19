@@ -15,18 +15,22 @@ import { cn } from "@/lib/utils";
 
 interface TextSelectionToolbarProps {
   selectedText: string;
+  position: { top: number; left: number };
   onClose: () => void;
   onManualEdit: (newText: string) => void;
   onAIRewrite: (instruction: string) => Promise<string>;
   isRewriting?: boolean;
+  useRelativePosition?: boolean;
 }
 
 export function TextSelectionToolbar({
   selectedText,
+  position,
   onClose,
   onManualEdit,
   onAIRewrite,
   isRewriting = false,
+  useRelativePosition = false,
 }: TextSelectionToolbarProps) {
   const [mode, setMode] = useState<'initial' | 'edit' | 'ai' | 'ai-preview'>('initial');
   const [editedText, setEditedText] = useState(selectedText);
@@ -117,13 +121,23 @@ export function TextSelectionToolbar({
     setEditableAiResult("");
   };
 
+  const positionStyles = useRelativePosition
+    ? {}
+    : {
+        position: 'fixed' as const,
+        top: Math.max(10, position.top - 45),
+        left: Math.max(10, Math.min(position.left, window.innerWidth - 300)),
+      };
+
   return (
     <div
       ref={toolbarRef}
       className={cn(
         "bg-popover border rounded-lg shadow-lg p-2",
-        "animate-in fade-in-0 zoom-in-95 duration-200"
+        "animate-in fade-in-0 zoom-in-95 duration-200",
+        !useRelativePosition && "fixed z-50"
       )}
+      style={positionStyles}
     >
       {/* Initial mode - show buttons */}
       {mode === 'initial' && (

@@ -245,7 +245,7 @@ export function ProposalPreview({
   }, [data.selectedServices]);
   
   return (
-    <div className="h-full flex flex-col bg-card border rounded-lg overflow-hidden min-h-0 max-w-full isolate">
+    <div className="h-full flex flex-col bg-card border rounded-lg overflow-hidden min-h-0 relative">
       {/* Header */}
       <div className="p-4 border-b bg-muted/30 shrink-0">
         <div className="flex items-center justify-between">
@@ -336,8 +336,8 @@ export function ProposalPreview({
       </div>
 
       {/* Preview Content */}
-      <ScrollArea className="flex-1 min-h-0 overflow-hidden">
-        <div ref={previewContainerRef} className="p-6 relative max-w-full">
+      <ScrollArea className="flex-1 min-h-0">
+        <div ref={previewContainerRef} className="p-6 relative">
           {!hasContent ? (
             <div className="text-center py-20">
               <FileText className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
@@ -561,52 +561,66 @@ export function ProposalPreview({
                   </EditableSection>
 
                   <div className="space-y-4 mb-4">
-                    {/* Services pricing - only show in per_service mode with fees only (no descriptions) */}
-                    {data.pricingMode === 'per_service' && data.selectedServices.length > 0 && (
-                      <div className="space-y-3">
-                        <p className="text-sm font-medium">Desglose por servicio:</p>
+                    {/* Services with description - always shown */}
+                    {data.selectedServices.length > 0 && (
+                      <div className="space-y-4">
                         {data.selectedServices.map((item, index) => {
-                          const feeType = item.service.fee_type || 'one_time';
-                          const showOneTime = feeType === 'one_time' || feeType === 'both';
-                          const showMonthly = feeType === 'monthly' || feeType === 'both';
-                          const fee = item.customFee ?? (item.service.suggested_fee ? Number(item.service.suggested_fee) : 0);
-                          const monthlyFee = item.customMonthlyFee ?? (item.service.suggested_monthly_fee ? Number(item.service.suggested_monthly_fee) : 0);
-                          const hasFee = (showOneTime && fee > 0) || (showMonthly && monthlyFee > 0);
+                          const serviceText = item.customText || item.service.standard_text || item.service.description;
+                          
+                          // For per_service mode, also show pricing
+                          if (data.pricingMode === 'per_service') {
+                            const feeType = item.service.fee_type || 'one_time';
+                            const showOneTime = feeType === 'one_time' || feeType === 'both';
+                            const showMonthly = feeType === 'monthly' || feeType === 'both';
+                            const fee = item.customFee ?? (item.service.suggested_fee ? Number(item.service.suggested_fee) : 0);
+                            const monthlyFee = item.customMonthlyFee ?? (item.service.suggested_monthly_fee ? Number(item.service.suggested_monthly_fee) : 0);
+                            const hasFee = (showOneTime && fee > 0) || (showMonthly && monthlyFee > 0);
 
-                          if (!hasFee) return null;
+                            return (
+                              <div key={item.service.id} className="pl-4">
+                                <p className="text-sm mb-1">
+                                  <strong>{String.fromCharCode(97 + index)}) {item.service.name}:</strong>
+                                </p>
+                                {serviceText && (
+                                  <p className="text-sm mb-2 ml-4 text-muted-foreground">
+                                    {serviceText}
+                                  </p>
+                                )}
+                                {hasFee && (
+                                  <p className="text-sm ml-4">
+                                    <strong>Honorarios:</strong>{" "}
+                                    {showOneTime && fee > 0 && (
+                                      <>
+                                        Un pago de <strong>{formatCurrency(fee)}</strong> más IVA
+                                        {showMonthly && monthlyFee > 0 ? ", más " : "."}
+                                      </>
+                                    )}
+                                    {showMonthly && monthlyFee > 0 && (
+                                      <>
+                                        una iguala mensual de <strong>{formatCurrency(monthlyFee)}</strong> más IVA.
+                                      </>
+                                    )}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          }
 
+                          // For summed and global modes, show only service name and description (no price breakdown)
                           return (
-                            <div key={item.service.id} className="pl-4 flex justify-between items-start">
-                              <span className="text-sm">
-                                {String.fromCharCode(97 + index)}) {item.service.name}
-                              </span>
-                              <span className="text-sm text-right">
-                                {showOneTime && fee > 0 && (
-                                  <span className="font-medium">{formatCurrency(fee)}</span>
-                                )}
-                                {showOneTime && fee > 0 && showMonthly && monthlyFee > 0 && " + "}
-                                {showMonthly && monthlyFee > 0 && (
-                                  <span className="font-medium">{formatCurrency(monthlyFee)}/mes</span>
-                                )}
-                              </span>
+                            <div key={item.service.id} className="pl-4">
+                              <p className="text-sm mb-1">
+                                <strong>{String.fromCharCode(97 + index)}) {item.service.name}:</strong>
+                              </p>
+                              {serviceText && (
+                                <p className="text-sm ml-4 text-muted-foreground">
+                                  {serviceText}
+                                </p>
+                              )}
                             </div>
                           );
                         })}
                       </div>
-                    )}
-
-                    {/* Summed mode - just show totals, no service list */}
-                    {data.pricingMode === 'summed' && (
-                      <p className="text-sm pl-4">
-                        Los honorarios corresponden al paquete de servicios descritos en la sección anterior.
-                      </p>
-                    )}
-
-                    {/* Global mode - no service breakdown */}
-                    {data.pricingMode === 'global' && (
-                      <p className="text-sm pl-4">
-                        Los honorarios incluyen todos los servicios descritos en la sección de Antecedentes y Alcance.
-                      </p>
                     )}
 
                     {/* Initial payment with installments */}
@@ -757,14 +771,17 @@ export function ProposalPreview({
             >
               <TextSelectionToolbar
                 selectedText={selection.text}
+                position={{ top: 0, left: 0 }} // Position is handled by parent div
                 onClose={() => setSelection(null)}
                 onManualEdit={handleManualEdit}
                 onAIRewrite={async (instruction) => {
                   const result = await handleAIRewriteRequest(instruction);
+                  // After getting result, accept it
                   handleAcceptAIRewrite(result, instruction);
                   return result;
                 }}
                 isRewriting={isRewriting}
+                useRelativePosition={true}
               />
             </div>
           )}
