@@ -452,95 +452,112 @@ export function ProposalPreview({
                   </p>
                 )}
 
-                {/* Services list */}
+                {/* Services */}
                 {data.selectedServices.length > 0 && (
                   <>
                     <p className="text-sm mb-4">
                       Finalmente, sabemos que gracias al crecimiento sostenido que han tenido, las
                       Empresas requieren la implementación de los siguientes servicios:
                     </p>
-                    <div className="space-y-4 mb-4">
-                      {data.selectedServices.map((item, index) => {
-                        const generatedDesc = getGeneratedServiceDescription(item.service.id);
-                        const originalText = generatedDesc?.expandedText || item.customText || item.service.standard_text || item.service.description || "";
-                        const sectionId = `service-${item.service.id}`;
-                        const displayText = getTextWithOverride(sectionId, originalText);
-                        
-                        return (
-                          <EditableSection
-                            key={item.service.id}
-                            sectionId={sectionId}
-                            override={getOverride(sectionId)}
-                            onTextSelection={handleTextSelection}
-                            onRestoreOriginal={onRestoreOriginal ? () => onRestoreOriginal(sectionId) : undefined}
-                            className="pl-4"
-                          >
-                            <p className="text-sm">
-                              <strong>{String.fromCharCode(97 + index)}) {item.service.name}:</strong>{" "}
-                              {displayText}
-                            </p>
-                            {/* Show AI-generated objectives if available */}
-                            {generatedDesc?.objectives && generatedDesc.objectives.length > 0 && (
-                              <div className="mt-2 ml-4">
-                                <p className="text-xs text-muted-foreground mb-1">Objetivos:</p>
-                                <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
-                                  {generatedDesc.objectives.map((obj, idx) => (
-                                    <li key={idx}>{obj}</li>
-                                  ))}
-                                </ol>
-                              </div>
-                            )}
-                          </EditableSection>
-                        );
-                      })}
-                    </div>
 
-                    {/* AI-generated badge */}
-                    {hasGeneratedContent && (
-                      <div className="flex items-center gap-2 mb-4">
-                        <Badge variant="outline" className="text-xs gap-1 text-primary border-primary/30">
-                          <Sparkles className="h-3 w-3" />
-                          Contenido generado con IA
-                        </Badge>
-                      </div>
-                    )}
-
-                    {/* Transition text - EDITABLE */}
-                    {hasGeneratedContent ? (
+                    {/* If user inserted a consolidated services narrative, show it instead of per-service list */}
+                    {data.servicesNarrative ? (
+                      <EditableSection
+                        sectionId="services-narrative"
+                        override={getOverride("services-narrative")}
+                        onTextSelection={handleTextSelection}
+                        onRestoreOriginal={onRestoreOriginal ? () => onRestoreOriginal("services-narrative") : undefined}
+                      >
+                        <p className="text-sm leading-relaxed mb-4 whitespace-pre-wrap">
+                          {getTextWithOverride("services-narrative", data.servicesNarrative)}
+                        </p>
+                      </EditableSection>
+                    ) : (
                       <>
-                        <EditableSection
-                          sectionId="transition"
-                          override={getOverride("transition")}
-                          onTextSelection={handleTextSelection}
-                          onRestoreOriginal={onRestoreOriginal ? () => onRestoreOriginal("transition") : undefined}
-                        >
-                          <p className="text-sm leading-relaxed mb-4">
-                            {getTextWithOverride("transition", data.generatedContent?.transitionText || "")}
-                          </p>
-                        </EditableSection>
-                        {/* Closing text from AI - EDITABLE */}
-                        {data.generatedContent?.closingText && (
-                          <EditableSection
-                            sectionId="closing-section"
-                            override={getOverride("closing-section")}
-                            onTextSelection={handleTextSelection}
-                            onRestoreOriginal={onRestoreOriginal ? () => onRestoreOriginal("closing-section") : undefined}
-                          >
-                            <p className="text-sm leading-relaxed mb-4">
-                              {getTextWithOverride("closing-section", data.generatedContent.closingText)}
-                            </p>
-                          </EditableSection>
+                        <div className="space-y-4 mb-4">
+                          {data.selectedServices.map((item, index) => {
+                            const generatedDesc = getGeneratedServiceDescription(item.service.id);
+                            const originalText = generatedDesc?.expandedText || item.customText || item.service.standard_text || item.service.description || "";
+                            const sectionId = `service-${item.service.id}`;
+                            const displayText = getTextWithOverride(sectionId, originalText);
+                            
+                            return (
+                              <EditableSection
+                                key={item.service.id}
+                                sectionId={sectionId}
+                                override={getOverride(sectionId)}
+                                onTextSelection={handleTextSelection}
+                                onRestoreOriginal={onRestoreOriginal ? () => onRestoreOriginal(sectionId) : undefined}
+                                className="pl-4"
+                              >
+                                <p className="text-sm">
+                                  <strong>{String.fromCharCode(97 + index)}) {item.service.name}:</strong>{" "}
+                                  {displayText}
+                                </p>
+                                {/* Show AI-generated objectives if available */}
+                                {generatedDesc?.objectives && generatedDesc.objectives.length > 0 && (
+                                  <div className="mt-2 ml-4">
+                                    <p className="text-xs text-muted-foreground mb-1">Objetivos:</p>
+                                    <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
+                                      {generatedDesc.objectives.map((obj, idx) => (
+                                        <li key={idx}>{obj}</li>
+                                      ))}
+                                    </ol>
+                                  </div>
+                                )}
+                              </EditableSection>
+                            );
+                          })}
+                        </div>
+
+                        {/* AI-generated badge */}
+                        {hasGeneratedContent && (
+                          <div className="flex items-center gap-2 mb-4">
+                            <Badge variant="outline" className="text-xs gap-1 text-primary border-primary/30">
+                              <Sparkles className="h-3 w-3" />
+                              Contenido generado con IA
+                            </Badge>
+                          </div>
                         )}
                       </>
-                    ) : (
-                      <div className="my-6 p-4 border-2 border-dashed border-muted-foreground/30 rounded-lg text-center">
-                        <Sparkles className="h-6 w-6 mx-auto mb-2 text-muted-foreground/50" />
-                        <p className="text-sm text-muted-foreground">
-                          Haz clic en <strong>"Generar contenido con IA"</strong> en la sección de servicios para crear el texto personalizado de la propuesta.
-                        </p>
-                      </div>
                     )}
                   </>
+                )}
+                {/* Transition text - EDITABLE */}
+                {hasGeneratedContent ? (
+                  <>
+                    <EditableSection
+                      sectionId="transition"
+                      override={getOverride("transition")}
+                      onTextSelection={handleTextSelection}
+                      onRestoreOriginal={onRestoreOriginal ? () => onRestoreOriginal("transition") : undefined}
+                    >
+                      <p className="text-sm leading-relaxed mb-4">
+                        {getTextWithOverride("transition", data.generatedContent?.transitionText || "")}
+                      </p>
+                    </EditableSection>
+
+                    {/* Closing text from AI - EDITABLE */}
+                    {data.generatedContent?.closingText && (
+                      <EditableSection
+                        sectionId="closing-section"
+                        override={getOverride("closing-section")}
+                        onTextSelection={handleTextSelection}
+                        onRestoreOriginal={onRestoreOriginal ? () => onRestoreOriginal("closing-section") : undefined}
+                      >
+                        <p className="text-sm leading-relaxed mb-4">
+                          {getTextWithOverride("closing-section", data.generatedContent.closingText)}
+                        </p>
+                      </EditableSection>
+                    )}
+                  </>
+                ) : (
+                  <div className="my-6 p-4 border-2 border-dashed border-muted-foreground/30 rounded-lg text-center">
+                    <Sparkles className="h-6 w-6 mx-auto mb-2 text-muted-foreground/50" />
+                    <p className="text-sm text-muted-foreground">
+                      Haz clic en <strong>"Generar contenido de servicios"</strong> para crear el texto personalizado de la propuesta.
+                    </p>
+                  </div>
                 )}
               </section>
 

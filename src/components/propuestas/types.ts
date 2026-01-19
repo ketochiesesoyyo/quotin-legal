@@ -141,6 +141,9 @@ export interface ProposalPreviewData {
   
   // Background
   background: string;
+
+  // Optional narrative block for services (when user inserts the generated services text)
+  servicesNarrative?: string;
   
   // Validated data (optional for now)
   validatedData: {
