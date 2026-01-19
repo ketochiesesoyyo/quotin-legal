@@ -251,11 +251,16 @@ function compileBlock(block: TemplateBlock, context: CompilerContext): CompiledB
 
 /**
  * Compiles a complete template schema with the provided context
- * Note: Dynamic blocks will have wasCompiled=false until generateDynamicContent is called
+ * Note: Dynamic blocks will use blockContents if provided, otherwise show placeholder
+ * 
+ * @param schema - The template schema with blocks
+ * @param context - The compiler context with client, services, etc.
+ * @param blockContents - Optional pre-generated content for dynamic blocks (from edge function)
  */
 export function compileTemplate(
   schema: TemplateSchema,
-  context: CompilerContext
+  context: CompilerContext,
+  blockContents?: Record<string, string>
 ): CompiledDocument {
   const warnings: string[] = [];
   const compiledBlocks: CompiledBlock[] = [];
@@ -266,6 +271,46 @@ export function compileTemplate(
   let hasDynamicBlocks = false;
 
   for (const block of sortedBlocks) {
+    // Handle dynamic blocks with pre-generated content
+    if (block.type === 'dynamic') {
+      hasDynamicBlocks = true;
+      
+      // Check if we have pre-generated content for this block
+      if (blockContents && blockContents[block.id]) {
+        compiledBlocks.push({
+          id: block.id,
+          type: 'dynamic',
+          originalContent: block.content,
+          compiledContent: blockContents[block.id],
+          variableName: block.variableName,
+          source: block.source,
+          instructions: block.instructions,
+          wasCompiled: true,
+          generatedByAI: true,
+        });
+      } else {
+        // No pre-generated content - show placeholder
+        if (!block.instructions || block.instructions.trim() === '') {
+          warnings.push(`Bloque dinámico "${block.variableName || block.id || 'sin nombre'}" no tiene instrucciones de IA configuradas. Configúralo en el editor de plantillas.`);
+        } else {
+          warnings.push(`Bloque dinámico "${block.variableName || block.id}" pendiente de generar con IA.`);
+        }
+        compiledBlocks.push({
+          id: block.id,
+          type: 'dynamic',
+          originalContent: block.content,
+          compiledContent: `[PENDIENTE: ${block.content || block.variableName || block.id}]`,
+          variableName: block.variableName,
+          source: block.source,
+          instructions: block.instructions,
+          wasCompiled: false,
+          generatedByAI: false,
+        });
+      }
+      continue;
+    }
+
+    // Handle static and variable blocks
     const compiled = compileBlock(block, context);
     compiledBlocks.push(compiled);
 
@@ -275,14 +320,6 @@ export function compileTemplate(
         warnings.push(`Variable "${block.variableName || block.id}" no tiene fuente de datos configurada. Configura la fuente en el editor de plantillas.`);
       } else if (!compiled.wasCompiled) {
         warnings.push(`Variable "${block.variableName || block.id}" no se pudo resolver desde "${block.source}". Verifica que los datos del contexto estén disponibles.`);
-      }
-    }
-
-    // Track dynamic blocks with better validation
-    if (block.type === 'dynamic') {
-      hasDynamicBlocks = true;
-      if (!block.instructions || block.instructions.trim() === '') {
-        warnings.push(`Bloque dinámico "${block.variableName || block.id || 'sin nombre'}" no tiene instrucciones de IA configuradas. Configúralo en el editor de plantillas.`);
       }
     }
   }

@@ -21,6 +21,7 @@ import type {
   AIAnalysisResult,
   DocumentTemplate 
 } from "@/components/plantillas/types";
+import { validateTemplateBlocks } from "@/lib/template-compiler";
 import { ArrowLeft, FileText, Loader2, Eye, Pencil } from "lucide-react";
 import { BlockTypeGuide } from "@/components/plantillas/BlockTypeGuide";
 import {
@@ -245,10 +246,21 @@ export default function PlantillaEditar() {
     },
   });
 
-  // Activate mutation
+  // Activate mutation - with validation before activating
   const activateMutation = useMutation({
     mutationFn: async () => {
       if (!id) throw new Error("No template ID");
+
+      // Validate template blocks before activating
+      const schema: TemplateSchema = { blocks, version: template?.version || "1.0" };
+      const validation = validateTemplateBlocks(schema);
+      
+      if (!validation.valid) {
+        const issuesList = validation.issues
+          .map(i => `• ${i.blockName}: ${i.issue}`)
+          .join('\n');
+        throw new Error(`No se puede activar la plantilla:\n${issuesList}`);
+      }
 
       const { error } = await supabase
         .from("document_templates")
