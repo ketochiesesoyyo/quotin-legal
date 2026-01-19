@@ -114,9 +114,9 @@ export function ProposalPreview({
   };
 
   return (
-    <div className="h-full flex flex-col bg-card border rounded-lg overflow-hidden">
+    <div className="h-full flex flex-col bg-card border rounded-lg overflow-hidden min-h-0">
       {/* Header */}
-      <div className="p-4 border-b bg-muted/30">
+      <div className="p-4 border-b bg-muted/30 shrink-0">
         <h2 className="font-semibold flex items-center gap-2">
           <Eye className="h-5 w-5" />
           Vista previa
@@ -124,7 +124,7 @@ export function ProposalPreview({
       </div>
 
       {/* Preview Content */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         <div className="p-6">
           {!hasContent ? (
             <div className="text-center py-20">
