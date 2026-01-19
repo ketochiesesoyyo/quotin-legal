@@ -236,6 +236,7 @@ export type Database = {
           custom_initial_payment: number | null
           custom_monthly_retainer: number | null
           custom_retainer_months: number | null
+          draft_content: string | null
           generated_block_contents: Json | null
           id: string
           is_recurring_client: boolean | null
@@ -271,6 +272,7 @@ export type Database = {
           custom_initial_payment?: number | null
           custom_monthly_retainer?: number | null
           custom_retainer_months?: number | null
+          draft_content?: string | null
           generated_block_contents?: Json | null
           id?: string
           is_recurring_client?: boolean | null
@@ -306,6 +308,7 @@ export type Database = {
           custom_initial_payment?: number | null
           custom_monthly_retainer?: number | null
           custom_retainer_months?: number | null
+          draft_content?: string | null
           generated_block_contents?: Json | null
           id?: string
           is_recurring_client?: boolean | null

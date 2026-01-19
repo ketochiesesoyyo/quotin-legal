@@ -20,6 +20,8 @@ import { ProposalFullPreview } from "@/components/propuestas/ProposalFullPreview
 import { RecipientSection, type RecipientData } from "@/components/propuestas/RecipientSection";
 import { TemplateSelector } from "@/components/propuestas/TemplateSelector";
 import { CompiledDocumentPreview, buildCompilerContext } from "@/components/propuestas/CompiledDocumentPreview";
+import { ProposalDocumentEditor } from "@/components/propuestas/ProposalDocumentEditor";
+import { DocumentSidebar } from "@/components/propuestas/DocumentSidebar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -95,13 +97,17 @@ export default function PropuestaEditar() {
   
   // Document template state (Sprint 2)
   const [selectedDocumentTemplate, setSelectedDocumentTemplate] = useState<DocumentTemplate | null>(null);
-  const [previewMode, setPreviewMode] = useState<'classic' | 'template'>('classic');
+  const [previewMode, setPreviewMode] = useState<'classic' | 'template' | 'document'>('classic');
 
   // Sprint 4: Text overrides for inline preview editing
   const [textOverrides, setTextOverrides] = useState<TextOverride[]>([]);
 
   // Template-first architecture: pre-generated block contents
   const [generatedBlockContents, setGeneratedBlockContents] = useState<Record<string, string>>({});
+
+  // Simplified flow: draft content for unified document editing
+  const [draftContent, setDraftContent] = useState<string>("");
+  const [showDocumentSidebar, setShowDocumentSidebar] = useState(true);
 
   // Ref for scrolling to Antecedentes section
   const antecedentesRef = useRef<HTMLDivElement>(null);
@@ -1287,9 +1293,10 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
 
         {/* Right Panel - Preview with Tabs */}
         <div className="w-1/2 p-6 flex flex-col min-h-0">
-          <Tabs value={previewMode} onValueChange={(v) => setPreviewMode(v as 'classic' | 'template')} className="flex-1 flex flex-col min-h-0">
+          <Tabs value={previewMode} onValueChange={(v) => setPreviewMode(v as 'classic' | 'template' | 'document')} className="flex-1 flex flex-col min-h-0">
             <TabsList className="mb-4 shrink-0">
               <TabsTrigger value="classic">Vista Clásica</TabsTrigger>
+              <TabsTrigger value="document">Editor de Documento</TabsTrigger>
               <TabsTrigger value="template" disabled={!hasTemplate && !selectedDocumentTemplate}>
                 Plantilla Compilada
               </TabsTrigger>
@@ -1309,8 +1316,37 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                 }}
               />
             </TabsContent>
+            <TabsContent value="document" className="flex-1 m-0 min-h-0 overflow-hidden">
+              <ProposalDocumentEditor
+                caseId={id!}
+                initialContent={draftContent || previewData.background || "<p>Comienza a escribir tu propuesta aquí...</p>"}
+                clientContext={{
+                  clientName: client?.group_name || "Cliente",
+                  groupAlias: client?.alias || undefined,
+                  industry: client?.industry,
+                  entities: entities.map(e => ({ legalName: e.legal_name, rfc: e.rfc })),
+                  primaryContact: recipientData.fullName !== "[Nombre del Contacto]" ? {
+                    fullName: recipientData.fullName,
+                    position: recipientData.position,
+                    salutationPrefix: recipientData.salutationPrefix,
+                  } : undefined,
+                }}
+                services={services.filter(s => s.isSelected).map(s => ({
+                  id: s.service.id,
+                  name: s.service.name,
+                  description: s.service.description,
+                  customText: s.customText,
+                  fee: s.customFee,
+                  monthlyFee: s.customMonthlyFee,
+                }))}
+                onSave={async (content) => {
+                  setDraftContent(content);
+                  await supabase.from("cases").update({ draft_content: content } as any).eq("id", id!);
+                }}
+                isSaving={saveMutation.isPending}
+              />
+            </TabsContent>
             <TabsContent value="template" className="flex-1 m-0 min-h-0 overflow-hidden">
-              {/* Template-first mode: use templateSnapshot from case */}
               {hasTemplate && templateSnapshot ? (
                 <div className="h-full flex flex-col min-h-0 border rounded-lg overflow-hidden bg-card">
                   <CompiledDocumentPreview
@@ -1321,7 +1357,6 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                   />
                 </div>
               ) : selectedDocumentTemplate ? (
-                /* Legacy: manually selected template */
                 <div className="h-full flex flex-col min-h-0 border rounded-lg overflow-hidden bg-card">
                   <CompiledDocumentPreview
                     template={selectedDocumentTemplate}
