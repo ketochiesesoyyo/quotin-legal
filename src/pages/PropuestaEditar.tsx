@@ -1028,6 +1028,7 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
         notes: caseData?.notes || undefined,
       },
       background: proposalBackground,
+      servicesNarrative: servicesNarrative,
       recipientName: recipientData.fullName,
       recipientPosition: recipientData.position || undefined,
       pricing: {

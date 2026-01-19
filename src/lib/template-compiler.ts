@@ -48,8 +48,9 @@ export interface ProposalContext {
   total_fee: number;
   monthly_retainer: number;
   retainer_months: number;
-  // Extended property for template sources
+  // Extended properties for template sources
   pricing_summary?: string; // Formatted pricing summary
+  services_narrative?: string; // Narrative description of selected services
 }
 
 export interface CaseContext {
