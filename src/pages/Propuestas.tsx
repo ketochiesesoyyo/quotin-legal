@@ -473,14 +473,14 @@ export default function Propuestas() {
               <div className="space-y-2">
                 <Label htmlFor="selected_template_id">Plantilla de Documento (Opcional)</Label>
                 <Select
-                  value={formData.selected_template_id}
-                  onValueChange={(value) => setFormData({ ...formData, selected_template_id: value })}
+                  value={formData.selected_template_id || "none"}
+                  onValueChange={(value) => setFormData({ ...formData, selected_template_id: value === "none" ? "" : value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Sin plantilla (modo libre)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sin plantilla (modo libre)</SelectItem>
+                    <SelectItem value="none">Sin plantilla (modo libre)</SelectItem>
                     {activeTemplates?.map((t) => (
                       <SelectItem key={t.id} value={t.id}>
                         {t.name}
