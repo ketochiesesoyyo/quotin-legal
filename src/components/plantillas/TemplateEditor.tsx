@@ -6,7 +6,7 @@ import TextAlign from '@tiptap/extension-text-align';
 import { BlockMarkerToolbar } from './BlockMarkerToolbar';
 import type { TemplateBlock, BlockType } from './types';
 import { useState, useCallback, useEffect } from 'react';
-import { Lock, Variable, Sparkles, X } from 'lucide-react';
+import { Lock, Variable, Sparkles, X, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -266,66 +266,100 @@ export function TemplateEditor({
       {markedBlocks.length > 0 && (
         <div className="border-b p-3 bg-muted/20">
           <div className="text-sm font-medium mb-2">Bloques marcados ({markedBlocks.length})</div>
+          
+          {/* Validation warnings */}
+          {(() => {
+            const incompleteBlocks = markedBlocks.filter(block => {
+              if (block.type === 'variable' && (!block.source || !block.variableName)) return true;
+              if (block.type === 'dynamic' && !block.instructions) return true;
+              return false;
+            });
+            
+            if (incompleteBlocks.length > 0) {
+              return (
+                <div className="mb-3 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
+                  <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 text-xs">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                    <span>
+                      {incompleteBlocks.length} bloque(s) sin configurar. Haz clic para completar la configuración.
+                    </span>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
+          
           <div className="flex flex-wrap gap-2">
-            {markedBlocks.map((block) => (
-              <div
-                key={block.id}
-                className={`flex items-center gap-1 px-2 py-1 rounded text-xs cursor-pointer transition-all ${
-                  block.type === 'static'
-                    ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                    : block.type === 'dynamic'
-                    ? 'bg-purple-100 text-purple-800 border border-purple-300'
-                    : 'bg-amber-100 text-amber-800 border border-amber-300'
-                } ${selectedBlockId === block.id ? 'ring-2 ring-primary' : ''}`}
-                onClick={() => {
-                  if (block.type === 'variable') {
-                    setSelectedBlockId(block.id);
-                    setVariableConfig({
-                      variableName: block.variableName || '',
-                      source: block.source || '',
-                    });
-                  } else if (block.type === 'dynamic') {
-                    setSelectedBlockId(block.id);
-                    setDynamicConfig({
-                      instructions: block.instructions || '',
-                    });
-                  }
-                }}
-              >
-                {block.type === 'static' ? (
-                  <Lock className="h-3 w-3" />
-                ) : block.type === 'dynamic' ? (
-                  <Sparkles className="h-3 w-3" />
-                ) : (
-                  <Variable className="h-3 w-3" />
-                )}
-                <span className="max-w-[100px] truncate">
-                  {block.content.substring(0, 20)}...
-                </span>
-                {block.type === 'variable' && block.variableName && (
-                  <span className="text-muted-foreground">
-                    ({block.variableName})
-                  </span>
-                )}
-                {block.type === 'dynamic' && block.instructions && (
-                  <span className="text-purple-600">
-                    ✓
-                  </span>
-                )}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-4 w-4 p-0 ml-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRemoveBlock(block.id);
+            {markedBlocks.map((block) => {
+              // Check if block is incomplete
+              const isIncomplete = 
+                (block.type === 'variable' && (!block.source || !block.variableName)) ||
+                (block.type === 'dynamic' && !block.instructions);
+              
+              return (
+                <div
+                  key={block.id}
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-xs cursor-pointer transition-all ${
+                    block.type === 'static'
+                      ? 'bg-blue-100 text-blue-800 border border-blue-300 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700'
+                      : block.type === 'dynamic'
+                      ? 'bg-purple-100 text-purple-800 border border-purple-300 dark:bg-purple-900/30 dark:text-purple-200 dark:border-purple-700'
+                      : 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-700'
+                  } ${selectedBlockId === block.id ? 'ring-2 ring-primary' : ''} ${isIncomplete ? 'ring-2 ring-destructive animate-pulse' : ''}`}
+                  onClick={() => {
+                    if (block.type === 'variable') {
+                      setSelectedBlockId(block.id);
+                      setVariableConfig({
+                        variableName: block.variableName || '',
+                        source: block.source || '',
+                      });
+                    } else if (block.type === 'dynamic') {
+                      setSelectedBlockId(block.id);
+                      setDynamicConfig({
+                        instructions: block.instructions || '',
+                      });
+                    }
                   }}
                 >
-                  <X className="h-3 w-3" />
-                </Button>
-              </div>
-            ))}
+                  {block.type === 'static' ? (
+                    <Lock className="h-3 w-3" />
+                  ) : block.type === 'dynamic' ? (
+                    <Sparkles className="h-3 w-3" />
+                  ) : (
+                    <Variable className="h-3 w-3" />
+                  )}
+                  <span className="max-w-[100px] truncate">
+                    {block.content.substring(0, 20)}...
+                  </span>
+                  {block.type === 'variable' && block.variableName && (
+                    <span className="text-muted-foreground">
+                      ({block.variableName})
+                    </span>
+                  )}
+                  {block.type === 'dynamic' && block.instructions && (
+                    <span className="text-purple-600 dark:text-purple-400">
+                      ✓
+                    </span>
+                  )}
+                  {isIncomplete && (
+                    <AlertTriangle className="h-3 w-3 text-destructive" />
+                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-4 w-4 p-0 ml-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveBlock(block.id);
+                    }}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

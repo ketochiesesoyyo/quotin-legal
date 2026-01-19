@@ -252,22 +252,31 @@ export function ProposalFullPreview({
                   </p>
                 )}
 
-                {data.selectedServices.length > 0 && (
+              {data.selectedServices.length > 0 && (
                   <>
-                    <p className="text-sm mb-4">
-                      Finalmente, sabemos que gracias al crecimiento sostenido que han tenido, las
-                      Empresas requieren la implementación de los siguientes servicios:
-                    </p>
-                    <div className="space-y-3 mb-4 pl-4">
-                      {data.selectedServices.map((item, index) => (
-                        <div key={item.service.id}>
-                          <p className="text-sm">
-                            <strong>{String.fromCharCode(97 + index)}) {item.service.name}:</strong>{" "}
-                            {item.customText || item.service.standard_text || item.service.description}
-                          </p>
+                    {/* If we have a consolidated servicesNarrative (AI-generated and inserted), show that */}
+                    {data.servicesNarrative ? (
+                      <div className="text-sm leading-relaxed mb-4 whitespace-pre-line">
+                        {data.servicesNarrative}
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-sm mb-4">
+                          Finalmente, sabemos que gracias al crecimiento sostenido que han tenido, las
+                          Empresas requieren la implementación de los siguientes servicios:
+                        </p>
+                        <div className="space-y-3 mb-4 pl-4">
+                          {data.selectedServices.map((item, index) => (
+                            <div key={item.service.id}>
+                              <p className="text-sm">
+                                <strong>{String.fromCharCode(97 + index)}) {item.service.name}:</strong>{" "}
+                                {item.customText || item.service.standard_text || item.service.description}
+                              </p>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </>
+                    )}
 
                     <p className="text-sm leading-relaxed mb-4">{FIXED_TEXTS.transicion}</p>
                     <p className="text-sm leading-relaxed">{FIXED_TEXTS.introParticipacion}</p>

@@ -26,6 +26,8 @@ interface ServicesSectionProps {
   editedServicesContent?: string;
   onInsertServicesContent?: (text: string) => void;
   onSaveServicesContentEdit?: (text: string) => void;
+  // Explicitly passed preSelectedCount from AI analysis
+  aiPreSelectedCount?: number;
 }
 
 // Helper to format currency
@@ -293,9 +295,11 @@ export function ServicesSection({
   editedServicesContent,
   onInsertServicesContent,
   onSaveServicesContentEdit,
+  aiPreSelectedCount,
 }: ServicesSectionProps) {
   const [isServicesCollapsed, setIsServicesCollapsed] = useState(false);
-  const preSelectedCount = services.filter((s) => s.confidence >= 80).length;
+  // Use explicitly passed count if available, otherwise calculate from isSuggested flag
+  const preSelectedCount = aiPreSelectedCount ?? services.filter((s) => s.confidence >= 80 && s.isSelected).length;
   const selectedCount = services.filter((s) => s.isSelected).length;
   const selectedServices = services.filter((s) => s.isSelected);
 
@@ -419,6 +423,15 @@ export function ServicesSection({
             {services.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
                 <p>No hay servicios disponibles</p>
+              </div>
+            )}
+
+            {services.length > 0 && preSelectedCount === 0 && (
+              <div className="text-center py-4 px-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  <Sparkles className="h-4 w-4 inline-block mr-2" />
+                  Servicios no sugeridos por IA. Elige los servicios que se van a ofrecer.
+                </p>
               </div>
             )}
           </div>
