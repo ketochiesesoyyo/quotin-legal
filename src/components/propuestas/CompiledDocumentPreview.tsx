@@ -249,7 +249,7 @@ export function CompiledDocumentPreview({
   const hasPendingDynamic = dynamicBlocks.some(b => !dynamicContent[b.id]);
 
   return (
-    <div className={`flex flex-col h-full min-h-0 ${className}`}>
+    <div className={`flex flex-col h-full min-h-0 max-w-full overflow-hidden isolate ${className}`}>
       {/* Header with stats and actions */}
       <div className="p-4 border-b bg-muted/30 flex items-center justify-between flex-wrap gap-2 shrink-0">
         <div className="flex items-center gap-2">
@@ -355,8 +355,8 @@ export function CompiledDocumentPreview({
       )}
 
       {/* Compiled content */}
-      <ScrollArea className="flex-1 min-h-0">
-        <div ref={contentRef} className="p-6 prose prose-sm max-w-none dark:prose-invert bg-white">
+      <ScrollArea className="flex-1 min-h-0 overflow-hidden">
+        <div ref={contentRef} className="p-6 prose prose-sm max-w-none max-w-full dark:prose-invert bg-white">
           {compiled.blocks.map((block, index) => {
             const isLoading = generatingBlockIds.has(block.id);
             const wasGenerated = isBlockGenerated(block);

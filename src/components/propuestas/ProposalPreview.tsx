@@ -245,7 +245,7 @@ export function ProposalPreview({
   }, [data.selectedServices]);
   
   return (
-    <div className="h-full flex flex-col bg-card border rounded-lg overflow-hidden min-h-0 relative">
+    <div className="h-full flex flex-col bg-card border rounded-lg overflow-hidden min-h-0 max-w-full isolate">
       {/* Header */}
       <div className="p-4 border-b bg-muted/30 shrink-0">
         <div className="flex items-center justify-between">
@@ -336,8 +336,8 @@ export function ProposalPreview({
       </div>
 
       {/* Preview Content */}
-      <ScrollArea className="flex-1 min-h-0">
-        <div ref={previewContainerRef} className="p-6 relative">
+      <ScrollArea className="flex-1 min-h-0 overflow-hidden">
+        <div ref={previewContainerRef} className="p-6 relative max-w-full">
           {!hasContent ? (
             <div className="text-center py-20">
               <FileText className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
