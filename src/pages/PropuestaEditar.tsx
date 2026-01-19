@@ -955,10 +955,10 @@ export default function PropuestaEditar() {
         annualRevenue={client?.annual_revenue || "No especificado"}
       />
 
-      {/* Two Panel Layout - fixed widths to prevent overlap */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* Two Panel Layout - grid to prevent overlap */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 overflow-hidden">
         {/* Left Panel - Editor */}
-        <div className="w-1/2 min-w-0 flex-shrink-0 border-r overflow-hidden">
+        <div className="min-w-0 border-b lg:border-b-0 lg:border-r overflow-hidden">
           <ScrollArea className="h-full">
             <div className="p-6 space-y-6">
               {/* Progress */}
@@ -1173,7 +1173,7 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar los
         </div>
 
         {/* Right Panel - Preview with Tabs */}
-        <div className="w-1/2 min-w-0 flex-shrink-0 p-6 flex flex-col min-h-0">
+        <div className="min-w-0 p-6 flex flex-col min-h-0">
           <Tabs value={previewMode} onValueChange={(v) => setPreviewMode(v as 'classic' | 'template')} className="flex-1 flex flex-col min-h-0">
             <TabsList className="mb-4 shrink-0">
               <TabsTrigger value="classic">Vista Clásica</TabsTrigger>
