@@ -289,12 +289,18 @@ export function CompiledDocumentPreview({
                 {dynamicBlocks.length} dinámico(s)
               </Badge>
             )}
-            {compiled.warnings.length > 0 && (
-              <Badge variant="destructive" className="text-xs gap-1">
-                <AlertTriangle className="h-3 w-3" />
-                {compiled.warnings.length}
-              </Badge>
-            )}
+            {/* Only show badge for critical warnings, not "pending generation" info */}
+            {(() => {
+              const criticalWarnings = compiled.warnings.filter(w => 
+                !w.includes('pendiente de generar') && !w.includes('Bloque dinámico')
+              );
+              return criticalWarnings.length > 0 ? (
+                <Badge variant="destructive" className="text-xs gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {criticalWarnings.length}
+                </Badge>
+              ) : null;
+            })()}
             {compiled.warnings.length === 0 && !hasPendingDynamic && (
               <Badge variant="secondary" className="text-xs gap-1 bg-green-100 text-green-700 border-green-300">
                 <CheckCircle className="h-3 w-3" />
@@ -525,6 +531,7 @@ export function buildCompilerContext(data: {
   }>;
   caseData?: { title: string; notes?: string };
   background?: string;
+  servicesNarrative?: string; // Added: narrative description of services
   recipientName?: string;
   recipientPosition?: string;
   pricing?: {
@@ -601,8 +608,9 @@ export function buildCompilerContext(data: {
       total_fee: data.pricing?.initialPayment || 0,
       monthly_retainer: data.pricing?.monthlyRetainer || 0,
       retainer_months: data.pricing?.retainerMonths || 12,
-      // Extended property
+      // Extended properties
       pricing_summary: pricingSummary,
+      services_narrative: data.servicesNarrative,
     },
     case: {
       title: data.caseData?.title || '[Título del Caso]',
