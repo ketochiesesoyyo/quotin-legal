@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sparkles, Pencil, Check, X, RefreshCw, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,13 +28,17 @@ export function GeneratedContentPreview({
   const [isOpen, setIsOpen] = useState(true);
   const [localEditedContent, setLocalEditedContent] = useState(externalEditedContent || generatedContent || "");
 
+  // Sync local state when external content changes (after save or new generation)
+  useEffect(() => {
+    if (externalEditedContent) {
+      setLocalEditedContent(externalEditedContent);
+    } else if (generatedContent && !isEditing) {
+      setLocalEditedContent(generatedContent);
+    }
+  }, [externalEditedContent, generatedContent, isEditing]);
+
   // Use external edited content if provided, otherwise use local
   const displayText = externalEditedContent || localEditedContent;
-
-  // Sync when new generated content arrives (only if no external edited version and not editing)
-  if (generatedContent && !externalEditedContent && generatedContent !== localEditedContent && !isEditing) {
-    setLocalEditedContent(generatedContent);
-  }
 
   const handleSave = () => {
     // Notify parent about the edit so it persists in parent state
@@ -50,9 +54,8 @@ export function GeneratedContentPreview({
   };
 
   const handleInsert = () => {
-    // Use the display text (which prioritizes externalEditedContent) to ensure we insert the latest version
-    const textToInsert = externalEditedContent || localEditedContent;
-    onInsertInProposal(textToInsert);
+    // Use the display text to ensure we insert the latest version
+    onInsertInProposal(displayText);
   };
 
   const hasContent = !!generatedContent || !!displayText;
