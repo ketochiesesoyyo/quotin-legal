@@ -209,13 +209,16 @@ export default function Servicios() {
   // Selection handlers
   const handleSelectAll = (checked: boolean) => {
     if (checked && filteredData) {
-      setSelectedIds(new Set(filteredData.map((s) => s.id)));
+      // Filter out any undefined or invalid IDs
+      const validIds = filteredData.map((s) => s.id).filter((id): id is string => typeof id === 'string' && !!id);
+      setSelectedIds(new Set(validIds));
     } else {
       setSelectedIds(new Set());
     }
   };
 
   const handleSelectOne = (id: string, checked: boolean) => {
+    if (!id || id === 'undefined') return; // Guard against invalid IDs
     const newSet = new Set(selectedIds);
     if (checked) {
       newSet.add(id);
@@ -449,13 +452,24 @@ export default function Servicios() {
             <BulkActionsToolbar
               selectedCount={selectedIds.size}
               onClearSelection={() => setSelectedIds(new Set())}
-              onBulkUpdateFee={(fee, monthlyFee) => 
-                bulkUpdateFeeMutation.mutate({ ids: Array.from(selectedIds), fee, monthlyFee })
-              }
-              onBulkUpdateStatus={(isActive) =>
-                bulkUpdateStatusMutation.mutate({ ids: Array.from(selectedIds), isActive })
-              }
-              onBulkDelete={() => bulkDeleteMutation.mutate(Array.from(selectedIds))}
+              onBulkUpdateFee={(fee, monthlyFee) => {
+                const validIds = Array.from(selectedIds).filter((id): id is string => typeof id === 'string' && id !== 'undefined');
+                if (validIds.length > 0) {
+                  bulkUpdateFeeMutation.mutate({ ids: validIds, fee, monthlyFee });
+                }
+              }}
+              onBulkUpdateStatus={(isActive) => {
+                const validIds = Array.from(selectedIds).filter((id): id is string => typeof id === 'string' && id !== 'undefined');
+                if (validIds.length > 0) {
+                  bulkUpdateStatusMutation.mutate({ ids: validIds, isActive });
+                }
+              }}
+              onBulkDelete={() => {
+                const validIds = Array.from(selectedIds).filter((id): id is string => typeof id === 'string' && id !== 'undefined');
+                if (validIds.length > 0) {
+                  bulkDeleteMutation.mutate(validIds);
+                }
+              }}
               isUpdating={isBulkUpdating}
             />
           )}
