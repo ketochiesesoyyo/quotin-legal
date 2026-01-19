@@ -118,16 +118,6 @@ const mapProposalStatusToCaseStatus = (status: ProposalStatus): CaseStatus => {
   }
 };
 
-const NEED_TYPES = [
-  "Consultoría fiscal",
-  "Litigio",
-  "Derecho corporativo",
-  "Propiedad intelectual",
-  "Derecho laboral",
-  "Fusiones y adquisiciones",
-  "Cumplimiento regulatorio",
-  "Otro",
-];
 
 export default function Propuestas() {
   const navigate = useNavigate();
@@ -138,7 +128,6 @@ export default function Propuestas() {
   const [showArchived, setShowArchived] = useState(false);
   const [formData, setFormData] = useState({
     client_id: "",
-    need_type: "",
     notes: "",
     selected_template_id: "",  // Template selection for Template-First architecture
   });
@@ -218,14 +207,13 @@ export default function Propuestas() {
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       const client = clients?.find(c => c.id === data.client_id);
-      const title = `${client?.group_name || 'Cliente'} - ${data.need_type || 'Nueva propuesta'}`;
+      const title = `${client?.group_name || 'Cliente'} - Nueva propuesta`;
       
       // Use edge function for server-side template snapshot creation
       const { data: result, error } = await supabase.functions.invoke('create-case', {
         body: {
           title,
           client_id: data.client_id,
-          need_type: data.need_type || null,
           notes: data.notes || null,
           selected_template_id: data.selected_template_id || null,
         }
@@ -237,7 +225,7 @@ export default function Propuestas() {
     onSuccess: async (newCase) => {
       queryClient.invalidateQueries({ queryKey: ["cases"] });
       setIsOpen(false);
-      setFormData({ client_id: "", need_type: "", notes: "", selected_template_id: "" });
+      setFormData({ client_id: "", notes: "", selected_template_id: "" });
       
       // Navigate to editor immediately - analysis will run in background
       const hasTemplate = !!newCase.selected_template_id;
@@ -448,25 +436,7 @@ export default function Propuestas() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="need_type">Tipo de Necesidad *</Label>
-                  <Select
-                    value={formData.need_type}
-                    onValueChange={(value) => setFormData({ ...formData, need_type: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona el tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {NEED_TYPES.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              </div>
               </div>
 
               {/* Template Selector - Template-First Architecture */}
@@ -537,7 +507,7 @@ export default function Propuestas() {
                 </Button>
                 <Button 
                   type="submit" 
-                  disabled={createMutation.isPending || !formData.client_id || !formData.need_type || !formData.notes.trim()}
+                  disabled={createMutation.isPending || !formData.client_id || !formData.notes.trim()}
                 >
                   {createMutation.isPending ? (
                     <>
@@ -651,14 +621,6 @@ export default function Propuestas() {
                         Cliente
                       </SortableTableHead>
                       <SortableTableHead
-                        sortKey="need_type"
-                        currentSortKey={sortConfig.key}
-                        currentDirection={sortConfig.direction}
-                        onSort={handleSort}
-                      >
-                        Tipo de Necesidad
-                      </SortableTableHead>
-                      <SortableTableHead
                         sortKey="servicesCount"
                         currentSortKey={sortConfig.key}
                         currentDirection={sortConfig.direction}
@@ -710,13 +672,6 @@ export default function Propuestas() {
                             </div>
                           </TableCell>
                           <TableCell>{caseItem.clientName}</TableCell>
-                          <TableCell>
-                            {caseItem.need_type ? (
-                              <Badge variant="outline">{caseItem.need_type}</Badge>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">Sin definir</span>
-                            )}
-                          </TableCell>
                           <TableCell className="text-center">
                             <Badge variant="secondary">{caseItem.servicesCount}</Badge>
                           </TableCell>
