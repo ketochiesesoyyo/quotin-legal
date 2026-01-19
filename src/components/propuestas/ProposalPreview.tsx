@@ -757,17 +757,15 @@ export function ProposalPreview({
             >
               <TextSelectionToolbar
                 selectedText={selection.text}
-                position={{ top: 0, left: 0 }} // Position is handled by parent div
+                position={{ top: 0, left: 0 }}
                 onClose={() => setSelection(null)}
                 onManualEdit={handleManualEdit}
                 onAIRewrite={async (instruction) => {
                   const result = await handleAIRewriteRequest(instruction);
-                  // After getting result, accept it
                   handleAcceptAIRewrite(result, instruction);
                   return result;
                 }}
                 isRewriting={isRewriting}
-                useRelativePosition={true}
               />
             </div>
           )}
