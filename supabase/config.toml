@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.rewrite-text]
 verify_jwt = false
+
+[functions.create-case]
+verify_jwt = false
