@@ -290,19 +290,19 @@ export default function Servicios() {
               </Button>
             </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-            <DialogHeader className="shrink-0 flex flex-row items-center justify-between gap-4">
+            <DialogHeader className="shrink-0 flex flex-row items-center justify-between gap-4 pr-10">
               <DialogTitle>{editingService ? "Editar Servicio" : "Nuevo Servicio"}</DialogTitle>
-              <div className="flex gap-2">
+              <div className="flex gap-2 mr-6">
                 <Button type="button" variant="outline" size="sm" onClick={() => setIsOpen(false)}>
-                  Cancelar
+                  Regresar
                 </Button>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   size="sm"
                   form="service-form"
                   disabled={createMutation.isPending || updateMutation.isPending}
                 >
-                  {editingService ? "Guardar y Cerrar" : "Crear Servicio"}
+                  {editingService ? "Guardar y regresar" : "Crear y regresar"}
                 </Button>
               </div>
             </DialogHeader>
