@@ -9,7 +9,8 @@ import { useAuditLog } from "@/hooks/useAuditLog";
 import { Loader2 } from "lucide-react";
 import { EditorHeader } from "@/components/propuestas/EditorHeader";
 import { ProgressIndicator } from "@/components/propuestas/ProgressIndicator";
-import { BackgroundSection } from "@/components/propuestas/BackgroundSection";
+import { UserNotesSection } from "@/components/propuestas/UserNotesSection";
+import { AIBackgroundSuggestion } from "@/components/propuestas/AIBackgroundSuggestion";
 import { ValidatedDataSection } from "@/components/propuestas/ValidatedDataSection";
 import { PricingModeSelector } from "@/components/propuestas/PricingModeSelector";
 import { ServicesSection } from "@/components/propuestas/ServicesSection";
@@ -665,6 +666,38 @@ export default function PropuestaEditar() {
     toast({ title: "Enviar", description: "Funcionalidad próximamente disponible" });
   };
 
+  // Handler for AI background analysis
+  const handleRequestAIAnalysis = async () => {
+    if (!userNotes.trim()) return;
+    setIsAIProcessing(true);
+    try {
+      // Simulate AI processing - in production this would call the edge function
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      
+      // Generate professional background text (this would come from AI in production)
+      const clientName = client?.alias || client?.group_name || "la Empresa";
+      const industry = client?.industry || "sus actividades comerciales";
+      const entityCount = entities.length;
+      const employeeCount = client?.employee_count || 0;
+      
+      const generatedBackground = `Derivado de la información que amablemente nos ha sido proporcionada, sabemos que ${clientName} se dedica principalmente a ${industry}. Asimismo, sabemos que actualmente operan con ${entityCount} razón${entityCount !== 1 ? 'es' : ''} social${entityCount !== 1 ? 'es' : ''}, así como una plantilla laboral de aproximadamente ${employeeCount} colaboradores, sumado a los activos tangibles e intangibles propios de su operación.
+
+Finalmente, sabemos que gracias al crecimiento sostenido que han tenido, las Empresas requieren la implementación de servicios especializados que permitan optimizar su estructura corporativa y fiscal, blindar patrimonialmente a los socios, y aprovechar al máximo los activos con que cuenta la organización.
+
+Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en la medida de lo posible y con total apego a derecho, los recursos económicos, humanos y materiales con que cuentan, así como implementar una estructura corporativa sólida de cara a las proyecciones de crecimiento que se tienen.`;
+      
+      setAiSuggestion(generatedBackground);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo generar los antecedentes",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAIProcessing(false);
+    }
+  };
+
   // Generate AI content for proposal
   const handleGenerateContent = async () => {
     const selectedServices = services.filter(s => s.isSelected);
@@ -956,18 +989,15 @@ export default function PropuestaEditar() {
               <ProgressIndicator steps={progressSteps} progress={progress} />
 
               {/* ========== MIS NOTAS ========== */}
-              <BackgroundSection
-                caseId={id!}
+              <UserNotesSection
                 userNotes={userNotes}
-                proposalBackground={proposalBackground}
-                aiSuggestion={aiSuggestion}
-                isAIProcessing={isAIProcessing}
                 isSaving={isSavingNotes}
+                isAIProcessing={isAIProcessing}
+                hasAISuggestion={!!aiSuggestion}
                 onUpdateNotes={setUserNotes}
                 onSaveNotes={async (notes: string) => {
                   setIsSavingNotes(true);
                   try {
-                    // Update case notes
                     const { error: caseError } = await supabase
                       .from("cases")
                       .update({ notes } as any)
@@ -975,7 +1005,6 @@ export default function PropuestaEditar() {
                     
                     if (caseError) throw caseError;
                     
-                    // Save to notes history
                     const { data: { user } } = await supabase.auth.getUser();
                     const { error: historyError } = await supabase
                       .from("case_notes_history")
@@ -999,37 +1028,7 @@ export default function PropuestaEditar() {
                     setIsSavingNotes(false);
                   }
                 }}
-                onUpdateProposalBackground={setProposalBackground}
-                onRequestAIAnalysis={async () => {
-                  if (!userNotes.trim()) return;
-                  setIsAIProcessing(true);
-                  try {
-                    // Simulate AI processing - in production this would call the edge function
-                    await new Promise((resolve) => setTimeout(resolve, 2000));
-                    
-                    // Generate professional background text (this would come from AI in production)
-                    const clientName = client?.alias || client?.group_name || "la Empresa";
-                    const industry = client?.industry || "sus actividades comerciales";
-                    const entityCount = entities.length;
-                    const employeeCount = client?.employee_count || 0;
-                    
-                    const generatedBackground = `Derivado de la información que amablemente nos ha sido proporcionada, sabemos que ${clientName} se dedica principalmente a ${industry}. Asimismo, sabemos que actualmente operan con ${entityCount} razón${entityCount !== 1 ? 'es' : ''} social${entityCount !== 1 ? 'es' : ''}, así como una plantilla laboral de aproximadamente ${employeeCount} colaboradores, sumado a los activos tangibles e intangibles propios de su operación.
-
-Finalmente, sabemos que gracias al crecimiento sostenido que han tenido, las Empresas requieren la implementación de servicios especializados que permitan optimizar su estructura corporativa y fiscal, blindar patrimonialmente a los socios, y aprovechar al máximo los activos con que cuenta la organización.
-
-Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en la medida de lo posible y con total apego a derecho, los recursos económicos, humanos y materiales con que cuentan, así como implementar una estructura corporativa sólida de cara a las proyecciones de crecimiento que se tienen.`;
-                    
-                    setAiSuggestion(generatedBackground);
-                  } catch (error) {
-                    toast({
-                      title: "Error",
-                      description: "No se pudo generar los antecedentes",
-                      variant: "destructive",
-                    });
-                  } finally {
-                    setIsAIProcessing(false);
-                  }
-                }}
+                onRequestAIAnalysis={handleRequestAIAnalysis}
               />
 
               {/* ========== DESTINATARIO DE LA PROPUESTA ========== */}
@@ -1056,10 +1055,18 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base font-semibold">I. ANTECEDENTES Y ALCANCE DE LOS SERVICIOS</CardTitle>
                   <p className="text-xs text-muted-foreground">
-                    Confirma los servicios para completar los antecedentes de la propuesta
+                    Revisa los antecedentes generados y confirma los servicios para la propuesta
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* AI-Generated Background Suggestion */}
+                  <AIBackgroundSuggestion
+                    aiSuggestion={aiSuggestion}
+                    isAIProcessing={isAIProcessing}
+                    onInsertInProposal={setProposalBackground}
+                    onRequestRegenerate={handleRequestAIAnalysis}
+                  />
+
                   {/* Services List */}
                   <ServicesSection
                     services={services}
