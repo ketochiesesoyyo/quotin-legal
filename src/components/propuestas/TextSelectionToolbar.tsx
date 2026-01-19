@@ -15,7 +15,6 @@ import { cn } from "@/lib/utils";
 
 interface TextSelectionToolbarProps {
   selectedText: string;
-  position: { top: number; left: number };
   onClose: () => void;
   onManualEdit: (newText: string) => void;
   onAIRewrite: (instruction: string) => Promise<string>;
@@ -24,7 +23,6 @@ interface TextSelectionToolbarProps {
 
 export function TextSelectionToolbar({
   selectedText,
-  position,
   onClose,
   onManualEdit,
   onAIRewrite,

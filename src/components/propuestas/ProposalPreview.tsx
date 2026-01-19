@@ -757,7 +757,6 @@ export function ProposalPreview({
             >
               <TextSelectionToolbar
                 selectedText={selection.text}
-                position={{ top: 0, left: 0 }}
                 onClose={() => setSelection(null)}
                 onManualEdit={handleManualEdit}
                 onAIRewrite={async (instruction) => {
