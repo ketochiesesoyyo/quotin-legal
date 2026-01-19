@@ -116,6 +116,94 @@ export interface GeneratedProposalContent {
   generatedAt: string;
 }
 
+// ============================================
+// Template-First Architecture Types (Sprint 2D)
+// ============================================
+
+/**
+ * Immutable snapshot of a template stored with a case
+ * Used to ensure proposal stability even if template is later modified
+ */
+export interface TemplateSnapshot {
+  template_id: string;
+  template_name: string;
+  schema_json: {
+    blocks: Array<{
+      id: string;
+      type: 'static' | 'variable' | 'dynamic';
+      content: string;
+      order: number;
+      variableName?: string;
+      source?: string;
+      instructions?: string;
+      required?: boolean;
+      format?: string;
+    }>;
+    version: string;
+    ai_instructions?: Record<string, unknown>;
+  };
+  ai_instructions?: Record<string, unknown> | string | null;
+  version: string;
+  snapshotted_at: string;
+}
+
+/**
+ * Request body for generate-proposal-content edge function
+ */
+export interface TemplateGenerationRequest {
+  caseId: string;
+  mode: 'template' | 'freeform';
+  // Freeform payload (only used if mode='freeform')
+  selectedServices?: Array<{
+    id: string;
+    name: string;
+    standardText: string | null;
+    objectivesTemplate: string | null;
+    deliverablesTemplate: string | null;
+  }>;
+  clientContext?: {
+    clientName: string;
+    groupAlias: string | null;
+    industry: string | null;
+    entityCount: number;
+    employeeCount: number;
+    annualRevenue: string | null;
+    entities: Array<{ legalName: string; rfc: string | null }>;
+  };
+  aiAnalysis?: {
+    objective: string | null;
+    risks: string[];
+    summary: string | null;
+  } | null;
+  background?: string;
+}
+
+/**
+ * Response from generate-proposal-content in template mode
+ */
+export interface TemplateGenerationResponse {
+  mode: 'template';
+  template_id: string;
+  block_contents: Record<string, string>;
+  warnings: Array<{
+    block_id: string;
+    reason: string;
+    details: string;
+  }>;
+  generatedAt: string;
+}
+
+/**
+ * Response from generate-proposal-content in freeform mode
+ */
+export interface FreeformGenerationResponse {
+  mode?: 'freeform';
+  transitionText: string;
+  serviceDescriptions: ServiceDescription[];
+  closingText: string;
+  generatedAt: string;
+}
+
 export interface EntityInfo {
   legalName: string;
   rfc?: string | null;

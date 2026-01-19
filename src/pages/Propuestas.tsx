@@ -137,6 +137,7 @@ export default function Propuestas() {
     client_id: "",
     need_type: "",
     notes: "",
+    selected_template_id: "",  // Template selection for Template-First architecture
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -181,35 +182,52 @@ export default function Propuestas() {
     },
   });
 
+  // Fetch active templates for selector
+  const { data: activeTemplates } = useQuery({
+    queryKey: ["active-templates"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("document_templates")
+        .select("id, name, description")
+        .eq("status", "active")
+        .eq("is_active", true)
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       const client = clients?.find(c => c.id === data.client_id);
       const title = `${client?.group_name || 'Cliente'} - ${data.need_type || 'Nueva propuesta'}`;
       
-      const { data: result, error } = await supabase
-        .from("cases")
-        .insert({
+      // Use edge function for server-side template snapshot creation
+      const { data: result, error } = await supabase.functions.invoke('create-case', {
+        body: {
           title,
           client_id: data.client_id,
           need_type: data.need_type || null,
           notes: data.notes || null,
-          status: "nuevo" as CaseStatus,
-          ai_status: "pending",
-        })
-        .select()
-        .single();
+          selected_template_id: data.selected_template_id || null,
+        }
+      });
+      
       if (error) throw error;
       return result;
     },
     onSuccess: async (newCase) => {
       queryClient.invalidateQueries({ queryKey: ["cases"] });
       setIsOpen(false);
-      setFormData({ client_id: "", need_type: "", notes: "" });
+      setFormData({ client_id: "", need_type: "", notes: "", selected_template_id: "" });
       
       // Navigate to editor immediately - analysis will run in background
+      const hasTemplate = !!newCase.selected_template_id;
       toast({ 
         title: "Propuesta creada", 
-        description: "Analizando con IA... Redirigiendo al editor." 
+        description: hasTemplate 
+          ? "Plantilla asignada. Analizando con IA... Redirigiendo al editor." 
+          : "Analizando con IA... Redirigiendo al editor."
       });
       
       // Start AI analysis in background
@@ -415,6 +433,30 @@ export default function Propuestas() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              {/* Template Selector - Template-First Architecture */}
+              <div className="space-y-2">
+                <Label htmlFor="selected_template_id">Plantilla de Documento (Opcional)</Label>
+                <Select
+                  value={formData.selected_template_id}
+                  onValueChange={(value) => setFormData({ ...formData, selected_template_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sin plantilla (modo libre)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Sin plantilla (modo libre)</SelectItem>
+                    {activeTemplates?.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Si seleccionas una plantilla, la IA generará contenido siguiendo su estructura exacta.
+                </p>
               </div>
               
               <div className="space-y-2">

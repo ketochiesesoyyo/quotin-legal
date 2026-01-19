@@ -230,11 +230,13 @@ export type Database = {
           assigned_to: string | null
           client_id: string
           complexity: Database["public"]["Enums"]["level_indicator"] | null
+          content_generated_at: string | null
           created_at: string
           created_by: string | null
           custom_initial_payment: number | null
           custom_monthly_retainer: number | null
           custom_retainer_months: number | null
+          generated_block_contents: Json | null
           id: string
           is_recurring_client: boolean | null
           need_type: string | null
@@ -251,6 +253,7 @@ export type Database = {
           selected_template_id: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["case_status"]
+          template_snapshot: Json | null
           title: string
           updated_at: string
           urgency: Database["public"]["Enums"]["urgency_level"] | null
@@ -262,11 +265,13 @@ export type Database = {
           assigned_to?: string | null
           client_id: string
           complexity?: Database["public"]["Enums"]["level_indicator"] | null
+          content_generated_at?: string | null
           created_at?: string
           created_by?: string | null
           custom_initial_payment?: number | null
           custom_monthly_retainer?: number | null
           custom_retainer_months?: number | null
+          generated_block_contents?: Json | null
           id?: string
           is_recurring_client?: boolean | null
           need_type?: string | null
@@ -283,6 +288,7 @@ export type Database = {
           selected_template_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["case_status"]
+          template_snapshot?: Json | null
           title: string
           updated_at?: string
           urgency?: Database["public"]["Enums"]["urgency_level"] | null
@@ -294,11 +300,13 @@ export type Database = {
           assigned_to?: string | null
           client_id?: string
           complexity?: Database["public"]["Enums"]["level_indicator"] | null
+          content_generated_at?: string | null
           created_at?: string
           created_by?: string | null
           custom_initial_payment?: number | null
           custom_monthly_retainer?: number | null
           custom_retainer_months?: number | null
+          generated_block_contents?: Json | null
           id?: string
           is_recurring_client?: boolean | null
           need_type?: string | null
@@ -315,6 +323,7 @@ export type Database = {
           selected_template_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["case_status"]
+          template_snapshot?: Json | null
           title?: string
           updated_at?: string
           urgency?: Database["public"]["Enums"]["urgency_level"] | null
