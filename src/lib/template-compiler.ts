@@ -269,16 +269,20 @@ export function compileTemplate(
     const compiled = compileBlock(block, context);
     compiledBlocks.push(compiled);
 
-    // Track unresolved variables
-    if (block.type === 'variable' && !compiled.wasCompiled) {
-      warnings.push(`Variable "${block.variableName || block.id}" no se pudo resolver desde "${block.source}"`);
+    // Track unresolved variables with better error messages
+    if (block.type === 'variable') {
+      if (!block.source) {
+        warnings.push(`Variable "${block.variableName || block.id}" no tiene fuente de datos configurada. Configura la fuente en el editor de plantillas.`);
+      } else if (!compiled.wasCompiled) {
+        warnings.push(`Variable "${block.variableName || block.id}" no se pudo resolver desde "${block.source}". Verifica que los datos del contexto estén disponibles.`);
+      }
     }
 
-    // Track dynamic blocks
+    // Track dynamic blocks with better validation
     if (block.type === 'dynamic') {
       hasDynamicBlocks = true;
-      if (!block.instructions) {
-        warnings.push(`Bloque dinámico "${block.id}" no tiene instrucciones configuradas`);
+      if (!block.instructions || block.instructions.trim() === '') {
+        warnings.push(`Bloque dinámico "${block.variableName || block.id || 'sin nombre'}" no tiene instrucciones de IA configuradas. Configúralo en el editor de plantillas.`);
       }
     }
   }
@@ -344,6 +348,52 @@ export function validateContext(
   return {
     valid: missing.length === 0,
     missing,
+  };
+}
+
+/**
+ * Validates template blocks for completeness (before activation)
+ * Returns issues that would prevent proper compilation
+ */
+export function validateTemplateBlocks(
+  schema: TemplateSchema
+): { valid: boolean; issues: { blockId: string; blockName: string; issue: string }[] } {
+  const issues: { blockId: string; blockName: string; issue: string }[] = [];
+
+  for (const block of schema.blocks) {
+    const blockName = block.variableName || block.id;
+
+    if (block.type === 'variable') {
+      if (!block.source || block.source.trim() === '') {
+        issues.push({
+          blockId: block.id,
+          blockName,
+          issue: 'Falta la fuente de datos (source)'
+        });
+      }
+      if (!block.variableName || block.variableName.trim() === '') {
+        issues.push({
+          blockId: block.id,
+          blockName: block.id,
+          issue: 'Falta el nombre de variable'
+        });
+      }
+    }
+
+    if (block.type === 'dynamic') {
+      if (!block.instructions || block.instructions.trim() === '') {
+        issues.push({
+          blockId: block.id,
+          blockName,
+          issue: 'Falta las instrucciones para la IA'
+        });
+      }
+    }
+  }
+
+  return {
+    valid: issues.length === 0,
+    issues,
   };
 }
 
