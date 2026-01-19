@@ -58,6 +58,7 @@ export default function PropuestaEditar() {
   const [userNotes, setUserNotes] = useState(""); // Notas crudas del usuario
   const [proposalBackground, setProposalBackground] = useState(""); // Antecedentes finales
   const [aiSuggestion, setAiSuggestion] = useState<string | undefined>(); // Sugerencia de IA
+  const [editedAiSuggestion, setEditedAiSuggestion] = useState<string | undefined>(); // Sugerencia editada manualmente
   const [isAIProcessing, setIsAIProcessing] = useState(false);
   const [services, setServices] = useState<ServiceWithConfidence[]>([]);
   const [selectedPricingId, setSelectedPricingId] = useState<string | null>(null);
@@ -1073,8 +1074,22 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                   {/* AI-Generated Background Suggestion */}
                   <AIBackgroundSuggestion
                     aiSuggestion={aiSuggestion}
+                    editedSuggestion={editedAiSuggestion}
                     isAIProcessing={isAIProcessing}
-                    onInsertInProposal={setProposalBackground}
+                    onInsertInProposal={(text) => {
+                      setProposalBackground(text);
+                      toast({
+                        title: "Antecedentes insertados",
+                        description: "El texto ha sido insertado en la propuesta",
+                      });
+                    }}
+                    onSaveEdit={(text) => {
+                      setEditedAiSuggestion(text);
+                      toast({
+                        title: "Cambios guardados",
+                        description: "Los cambios están listos para insertar en la propuesta",
+                      });
+                    }}
                     onRequestRegenerate={handleRequestAIAnalysis}
                   />
 
