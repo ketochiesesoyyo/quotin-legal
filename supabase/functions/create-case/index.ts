@@ -79,6 +79,24 @@ serve(async (req) => {
       }
 
       if (template) {
+        // Validate template blocks before snapshotting
+        const schemaBlocks = (template.schema_json as { blocks?: Array<{ type: string; source?: string; instructions?: string }> })?.blocks || [];
+        const hasIncompleteBlocks = schemaBlocks.some(block => {
+          if (block.type === 'dynamic' && (!block.instructions || block.instructions.trim() === '')) return true;
+          if (block.type === 'variable' && (!block.source || block.source.trim() === '')) return true;
+          return false;
+        });
+
+        if (hasIncompleteBlocks) {
+          console.error("Template has incomplete blocks:", selected_template_id);
+          return new Response(
+            JSON.stringify({ 
+              error: "La plantilla seleccionada tiene bloques incompletos (variables sin fuente o bloques dinámicos sin instrucciones). Configúrala en el editor de plantillas antes de usarla." 
+            }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
         templateSnapshot = {
           template_id: template.id,
           template_name: template.name,

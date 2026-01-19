@@ -189,18 +189,30 @@ export default function Propuestas() {
     },
   });
 
-  // Fetch active templates for selector
+  // Fetch active templates for selector with schema for validation
   const { data: activeTemplates } = useQuery({
     queryKey: ["active-templates"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("document_templates")
-        .select("id, name, description")
+        .select("id, name, description, schema_json")
         .eq("status", "active")
         .eq("is_active", true)
         .order("name");
       if (error) throw error;
-      return data;
+      
+      // Filter only templates with complete blocks
+      return (data || []).filter(template => {
+        const schema = template.schema_json as { blocks?: Array<{ type: string; source?: string; instructions?: string }> } | null;
+        if (!schema?.blocks) return true; // No blocks = no issues
+        
+        // Check for incomplete blocks
+        return !schema.blocks.some(block => {
+          if (block.type === 'dynamic' && (!block.instructions || block.instructions.trim() === '')) return true;
+          if (block.type === 'variable' && (!block.source || block.source.trim() === '')) return true;
+          return false;
+        });
+      });
     },
   });
 
