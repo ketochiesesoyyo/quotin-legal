@@ -50,7 +50,9 @@ export function GeneratedContentPreview({
   };
 
   const handleInsert = () => {
-    onInsertInProposal(localEditedContent);
+    // Use the display text (which prioritizes externalEditedContent) to ensure we insert the latest version
+    const textToInsert = externalEditedContent || localEditedContent;
+    onInsertInProposal(textToInsert);
   };
 
   const hasContent = !!generatedContent || !!displayText;
