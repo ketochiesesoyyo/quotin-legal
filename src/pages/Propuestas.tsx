@@ -142,13 +142,14 @@ export default function Propuestas() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch cases with related data
+  // Fetch cases with related data (excluding archived)
   const { data: cases, isLoading } = useQuery({
     queryKey: ["cases"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("cases")
         .select("*")
+        .neq("status", "archivada")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as (Case & { ai_analysis?: AIAnalysis; ai_status?: string })[];
