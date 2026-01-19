@@ -1,12 +1,14 @@
-import { useState, useCallback, useRef } from "react";
-import { FileText, Eye, ArrowRight, Sparkles, Pencil, MousePointer2 } from "lucide-react";
+import { useState, useCallback, useRef, useMemo } from "react";
+import { FileText, Eye, ArrowRight, Sparkles, Pencil, MousePointer2, History, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { EditableSection } from "./EditableSection";
 import { TextSelectionToolbar } from "./TextSelectionToolbar";
+import { EditHistoryPanel } from "./EditHistoryPanel";
 import type { ProposalPreviewData, ServiceDescription, TextOverride } from "./types";
 
 interface ProposalPreviewProps {
@@ -133,6 +135,7 @@ export function ProposalPreview({
   
   // Explicit toggle for edit mode
   const [isEditModeActive, setIsEditModeActive] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   
   // Check if editing is enabled (has handlers AND mode is active)
   const canEdit = !!onTextOverride;
@@ -181,6 +184,7 @@ export function ProposalPreview({
       originalText: selection.text,
       newText,
       isAIGenerated: false,
+      timestamp: new Date().toISOString(),
     });
     
     setSelection(null);
@@ -211,6 +215,7 @@ export function ProposalPreview({
       newText,
       isAIGenerated: true,
       instruction,
+      timestamp: new Date().toISOString(),
     });
     
     setSelection(null);
@@ -223,7 +228,22 @@ export function ProposalPreview({
   
   // Count edits
   const editCount = textOverrides.length;
-
+  
+  // Helper to get section labels for history panel
+  const getSectionLabel = useMemo(() => {
+    return (sectionId: string): string => {
+      if (sectionId === "background") return "Antecedentes";
+      if (sectionId.startsWith("service-")) {
+        const serviceId = sectionId.replace("service-", "");
+        const service = data.selectedServices.find(s => s.service.id === serviceId);
+        return service?.service.name || "Servicio";
+      }
+      if (sectionId === "transition") return "Texto de transición";
+      if (sectionId === "closing") return "Cierre";
+      return sectionId;
+    };
+  }, [data.selectedServices]);
+  
   return (
     <div className="h-full flex flex-col bg-card border rounded-lg overflow-hidden min-h-0 relative">
       {/* Header */}
@@ -234,12 +254,31 @@ export function ProposalPreview({
             Vista previa
           </h2>
           <div className="flex items-center gap-2">
-            {/* Edit count badge */}
+            {/* History toggle button */}
             {editCount > 0 && (
-              <Badge variant="secondary" className="text-xs gap-1">
-                <Pencil className="h-3 w-3" />
-                {editCount} {editCount === 1 ? 'edición' : 'ediciones'}
-              </Badge>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={isHistoryOpen ? "secondary" : "ghost"}
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+                    >
+                      <History className="h-4 w-4" />
+                      <span className="text-xs">{editCount}</span>
+                      {isHistoryOpen ? (
+                        <ChevronUp className="h-3 w-3" />
+                      ) : (
+                        <ChevronDown className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isHistoryOpen ? "Ocultar historial" : "Ver historial de ediciones"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
             
             {/* Toggle edit mode button */}
@@ -279,6 +318,19 @@ export function ProposalPreview({
             <span>
               <strong>Modo edición activo:</strong> Selecciona cualquier texto para editarlo manualmente o reescribirlo con IA
             </span>
+          </div>
+        )}
+        
+        {/* History panel (collapsible) */}
+        {isHistoryOpen && editCount > 0 && (
+          <div className="mt-3 border rounded-lg bg-background max-h-64 overflow-hidden">
+            <EditHistoryPanel
+              overrides={textOverrides}
+              onRestore={(sectionId) => {
+                onRestoreOriginal?.(sectionId);
+              }}
+              getSectionLabel={getSectionLabel}
+            />
           </div>
         )}
       </div>

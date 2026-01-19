@@ -17,6 +17,7 @@ export interface TextOverride {
   newText: string;
   isAIGenerated: boolean;
   instruction?: string; // AI instruction if AI-generated
+  timestamp: string; // ISO timestamp for history tracking
 }
 
 // Pricing mode for proposal fee calculation
