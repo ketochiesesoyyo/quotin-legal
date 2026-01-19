@@ -26,8 +26,6 @@ interface ServicesSectionProps {
   editedServicesContent?: string;
   onInsertServicesContent?: (text: string) => void;
   onSaveServicesContentEdit?: (text: string) => void;
-  // Explicitly passed preSelectedCount from AI analysis
-  aiPreSelectedCount?: number;
 }
 
 // Helper to format currency
@@ -91,12 +89,19 @@ function ServiceCard({
   // Show individual prices in per_service and summed modes (to see what you're editing)
   const showIndividualPrices = pricingMode === 'per_service' || pricingMode === 'summed';
 
+  // Check if this service was suggested by AI (high confidence score)
+  const isAISuggested = item.confidence >= 85;
+
   return (
     <div
-      className={`border rounded-lg p-4 transition-all ${
+      className={`border-2 rounded-lg p-4 transition-all ${
         item.isSelected
-          ? "border-primary bg-primary/5 shadow-sm"
-          : "border-border hover:border-muted-foreground/30"
+          ? isAISuggested
+            ? "border-violet-500 bg-violet-50/50 dark:bg-violet-900/20 shadow-sm"
+            : "border-primary bg-primary/5 shadow-sm"
+          : isAISuggested
+            ? "border-violet-300 bg-violet-50/30 dark:bg-violet-900/10 hover:border-violet-400"
+            : "border-border hover:border-muted-foreground/30"
       }`}
     >
       <div className="flex items-start gap-3">
@@ -118,13 +123,10 @@ function ServiceCard({
               )}
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <Badge variant="secondary" className={`text-xs ${getConfidenceColor(item.confidence)}`}>
-                {item.confidence}% confianza
-              </Badge>
-              {item.confidence >= 80 && (
-                <Badge variant="outline" className="text-xs gap-1 text-primary">
+              {isAISuggested && (
+                <Badge className="text-xs gap-1 bg-violet-500 hover:bg-violet-600 text-white">
                   <Sparkles className="h-3 w-3" />
-                  IA
+                  Sugerido por IA
                 </Badge>
               )}
             </div>
@@ -295,11 +297,8 @@ export function ServicesSection({
   editedServicesContent,
   onInsertServicesContent,
   onSaveServicesContentEdit,
-  aiPreSelectedCount,
 }: ServicesSectionProps) {
   const [isServicesCollapsed, setIsServicesCollapsed] = useState(false);
-  // Use explicitly passed count if available, otherwise calculate from isSuggested flag
-  const preSelectedCount = aiPreSelectedCount ?? services.filter((s) => s.confidence >= 80 && s.isSelected).length;
   const selectedCount = services.filter((s) => s.isSelected).length;
   const selectedServices = services.filter((s) => s.isSelected);
 
@@ -344,8 +343,8 @@ export function ServicesSection({
           <CardTitle className="text-base font-semibold">SERVICIOS RECOMENDADOS</CardTitle>
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="text-xs gap-1">
-              <Sparkles className="h-3 w-3" />
-              IA PRE-SELECCIONÓ {preSelectedCount}
+              <Check className="h-3 w-3" />
+              SELECCIONADOS {selectedCount}
             </Badge>
             <Button
               variant="ghost"
@@ -426,11 +425,10 @@ export function ServicesSection({
               </div>
             )}
 
-            {services.length > 0 && preSelectedCount === 0 && (
-              <div className="text-center py-4 px-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-                <p className="text-sm text-amber-700 dark:text-amber-300">
-                  <Sparkles className="h-4 w-4 inline-block mr-2" />
-                  Servicios no sugeridos por IA. Elige los servicios que se van a ofrecer.
+            {services.length > 0 && selectedCount === 0 && (
+              <div className="text-center py-4 px-4 bg-muted/50 rounded-lg border border-border">
+                <p className="text-sm text-muted-foreground">
+                  Elige los servicios que se van a ofrecer.
                 </p>
               </div>
             )}
