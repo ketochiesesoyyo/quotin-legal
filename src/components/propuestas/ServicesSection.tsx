@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, Check, ChevronDown, ChevronUp, Pencil, DollarSign, Calculator, ListOrdered, Wallet, Wand2, Eye, EyeOff } from "lucide-react";
+import { Sparkles, Check, ChevronDown, ChevronUp, Pencil, DollarSign, Calculator, ListOrdered, Wallet, Wand2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -350,9 +350,9 @@ export function ServicesSection({
               className="h-8 w-8 p-0"
             >
               {isServicesCollapsed ? (
-                <Eye className="h-4 w-4" />
+                <ChevronDown className="h-4 w-4" />
               ) : (
-                <EyeOff className="h-4 w-4" />
+                <ChevronUp className="h-4 w-4" />
               )}
             </Button>
           </div>
