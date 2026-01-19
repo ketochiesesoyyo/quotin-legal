@@ -194,7 +194,7 @@ export function ImportServicesDialog({ trigger }: ImportServicesDialogProps) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-3xl h-[85vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
@@ -304,7 +304,7 @@ export function ImportServicesDialog({ trigger }: ImportServicesDialogProps) {
                   </Badge>
                 </div>
 
-                <ScrollArea className="flex-1 -mx-6 px-6">
+                <ScrollArea className="flex-1 min-h-0 -mx-6 px-6">
                   <div className="space-y-3">
                     {parsedServices.map((service) => (
                       <div
@@ -318,6 +318,16 @@ export function ImportServicesDialog({ trigger }: ImportServicesDialogProps) {
                         {editingId === service.id ? (
                           // Edit Mode
                           <div className="space-y-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <Label className="text-sm font-medium">Editando servicio</Label>
+                              <Button
+                                size="sm"
+                                onClick={() => setEditingId(null)}
+                              >
+                                <Check className="mr-2 h-4 w-4" />
+                                Listo
+                              </Button>
+                            </div>
                             <div className="space-y-2">
                               <Label className="text-xs">Nombre</Label>
                               <Input
@@ -364,15 +374,6 @@ export function ImportServicesDialog({ trigger }: ImportServicesDialogProps) {
                                   <SelectItem value="both">Ambos</SelectItem>
                                 </SelectContent>
                               </Select>
-                            </div>
-                            <div className="flex justify-end">
-                              <Button
-                                size="sm"
-                                onClick={() => setEditingId(null)}
-                              >
-                                <Check className="mr-2 h-4 w-4" />
-                                Listo
-                              </Button>
                             </div>
                           </div>
                         ) : (
