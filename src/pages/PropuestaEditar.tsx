@@ -80,6 +80,8 @@ export default function PropuestaEditar() {
   const [showFullPreview, setShowFullPreview] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<GeneratedProposalContent | null>(null);
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
+  const [generatedServicesContent, setGeneratedServicesContent] = useState<string | undefined>();
+  const [editedServicesContent, setEditedServicesContent] = useState<string | undefined>();
   const [recipientData, setRecipientData] = useState<RecipientData>({
     fullName: "[Nombre del Contacto]",
     position: null,
@@ -763,6 +765,26 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
       const content = response.data as GeneratedProposalContent;
       setGeneratedContent(content);
       
+      // Generate consolidated services text for the preview
+      const servicesText = content.serviceDescriptions.map((desc, index) => {
+        const service = selectedServices.find(s => s.service.id === desc.serviceId);
+        const serviceName = service?.service.name || `Servicio ${index + 1}`;
+        let text = `${String.fromCharCode(97 + index)}) ${serviceName}\n\n${desc.expandedText}`;
+        
+        if (desc.objectives && desc.objectives.length > 0) {
+          text += `\n\nObjetivos:\n${desc.objectives.map(o => `• ${o}`).join('\n')}`;
+        }
+        
+        if (desc.deliverables && desc.deliverables.length > 0) {
+          text += `\n\nEntregables:\n${desc.deliverables.map(d => `• ${d}`).join('\n')}`;
+        }
+        
+        return text;
+      }).join('\n\n---\n\n');
+      
+      setGeneratedServicesContent(servicesText);
+      setEditedServicesContent(undefined); // Reset any manual edits
+      
       toast({
         title: "Contenido generado",
         description: "El contenido de la propuesta ha sido generado con IA",
@@ -1103,7 +1125,28 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                     showModeSelector={false}
                     onGenerateContent={handleGenerateContent}
                     isGeneratingContent={isGeneratingContent}
-                    hasGeneratedContent={!!generatedContent}
+                    generatedServicesContent={generatedServicesContent}
+                    editedServicesContent={editedServicesContent}
+                    onInsertServicesContent={(text) => {
+                      // Insert the services content into the proposal
+                      setGeneratedContent(prev => prev ? {
+                        ...prev,
+                        servicesText: text
+                      } : null);
+                      // Also update the generated services content for persistence
+                      setGeneratedServicesContent(text);
+                      toast({
+                        title: "Contenido insertado",
+                        description: "El texto de servicios ha sido insertado en la propuesta",
+                      });
+                    }}
+                    onSaveServicesContentEdit={(text) => {
+                      setEditedServicesContent(text);
+                      toast({
+                        title: "Cambios guardados",
+                        description: "Los cambios están listos para insertar en la propuesta",
+                      });
+                    }}
                   />
                 </CardContent>
               </Card>
