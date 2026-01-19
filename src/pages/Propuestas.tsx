@@ -35,6 +35,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/error-utils";
 import { 
@@ -54,6 +55,7 @@ import {
   Pencil,
   ArrowRightLeft,
   Archive,
+  ArchiveRestore,
   Send,
   FileEdit
 } from "lucide-react";
@@ -133,6 +135,7 @@ export default function Propuestas() {
   const [selectedCase, setSelectedCase] = useState<(Case & { ai_analysis?: AIAnalysis }) | null>(null);
   const [viewProposalCase, setViewProposalCase] = useState<Case | null>(null);
   const [statusChangeCase, setStatusChangeCase] = useState<Case | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
   const [formData, setFormData] = useState({
     client_id: "",
     need_type: "",
@@ -153,6 +156,20 @@ export default function Propuestas() {
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as (Case & { ai_analysis?: AIAnalysis; ai_status?: string })[];
+    },
+  });
+
+  // Fetch archived cases
+  const { data: archivedCases, isLoading: isLoadingArchived } = useQuery({
+    queryKey: ["archived-cases"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("cases")
+        .select("*")
+        .eq("status", "archivada")
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      return data as Case[];
     },
   });
 
@@ -294,10 +311,26 @@ export default function Propuestas() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cases"] });
+      queryClient.invalidateQueries({ queryKey: ["archived-cases"] });
       toast({ title: "Propuesta archivada", description: "La propuesta ha sido archivada correctamente" });
     },
     onError: (error) => {
       toast({ title: "Error al archivar", description: getErrorMessage(error), variant: "destructive" });
+    },
+  });
+
+  const restoreProposalMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("cases").update({ status: "borrador" as CaseStatus }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cases"] });
+      queryClient.invalidateQueries({ queryKey: ["archived-cases"] });
+      toast({ title: "Propuesta restaurada", description: "La propuesta ha sido restaurada como borrador" });
+    },
+    onError: (error) => {
+      toast({ title: "Error al restaurar", description: getErrorMessage(error), variant: "destructive" });
     },
   });
 
@@ -568,179 +601,269 @@ export default function Propuestas() {
         </Card>
       </div>
 
-      {/* Proposals Table */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Todas las Propuestas</CardTitle>
-          <TableSearch
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Buscar propuesta..."
-          />
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : filteredData && filteredData.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <SortableTableHead
-                    sortKey="title"
-                    currentSortKey={sortConfig.key}
-                    currentDirection={sortConfig.direction}
-                    onSort={handleSort}
-                  >
-                    Propuesta
-                  </SortableTableHead>
-                  <SortableTableHead
-                    sortKey="clientName"
-                    currentSortKey={sortConfig.key}
-                    currentDirection={sortConfig.direction}
-                    onSort={handleSort}
-                  >
-                    Cliente
-                  </SortableTableHead>
-                  <SortableTableHead
-                    sortKey="need_type"
-                    currentSortKey={sortConfig.key}
-                    currentDirection={sortConfig.direction}
-                    onSort={handleSort}
-                  >
-                    Tipo de Necesidad
-                  </SortableTableHead>
-                  <SortableTableHead
-                    sortKey="servicesCount"
-                    currentSortKey={sortConfig.key}
-                    currentDirection={sortConfig.direction}
-                    onSort={handleSort}
-                    className="text-center"
-                  >
-                    Servicios
-                  </SortableTableHead>
-                  <SortableTableHead
-                    sortKey="totalCost"
-                    currentSortKey={sortConfig.key}
-                    currentDirection={sortConfig.direction}
-                    onSort={handleSort}
-                    className="text-right"
-                  >
-                    Costo Total
-                  </SortableTableHead>
-                  <SortableTableHead
-                    sortKey="status"
-                    currentSortKey={sortConfig.key}
-                    currentDirection={sortConfig.direction}
-                    onSort={handleSort}
-                  >
-                    Estatus
-                  </SortableTableHead>
-                  <SortableTableHead
-                    sortKey="assignedName"
-                    currentSortKey={sortConfig.key}
-                    currentDirection={sortConfig.direction}
-                    onSort={handleSort}
-                  >
-                    Responsable
-                  </SortableTableHead>
-                  <th className="w-[50px]"></th>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredData.map((caseItem) => {
-                  const proposalStatus = mapCaseStatusToProposalStatus(caseItem.status);
-                  const statusConfig = PROPOSAL_STATUS_CONFIG[proposalStatus];
-                  const isDraft = proposalStatus === "draft";
-                  
-                  return (
-                    <TableRow key={caseItem.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                          {caseItem.title}
-                        </div>
-                      </TableCell>
-                      <TableCell>{caseItem.clientName}</TableCell>
-                      <TableCell>
-                        {caseItem.need_type ? (
-                          <Badge variant="outline">{caseItem.need_type}</Badge>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">Sin definir</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="secondary">{caseItem.servicesCount}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(caseItem.totalCost)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={statusConfig.color}>
-                          <span className="flex items-center gap-1">
-                            {statusConfig.icon}
-                            {statusConfig.label}
-                          </span>
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm">{caseItem.assignedName}</span>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {isDraft && (
-                              <DropdownMenuItem onClick={() => {
-                                window.location.href = `/propuestas/${caseItem.id}/editar`;
-                              }}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Editar Propuesta
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem onClick={() => setStatusChangeCase(caseItem)}>
-                              <ArrowRightLeft className="mr-2 h-4 w-4" />
-                              Cambiar Estatus
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setViewProposalCase(caseItem)}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              Ver Propuesta
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => archiveProposalMutation.mutate(caseItem.id)}
-                              disabled={archiveProposalMutation.isPending}
-                              className="text-muted-foreground"
-                            >
-                              <Archive className="mr-2 h-4 w-4" />
-                              Archivar Propuesta
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+      {/* Proposals Tabs */}
+      <Tabs defaultValue="active" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="active" className="gap-2">
+            <FileText className="h-4 w-4" />
+            Activas ({cases?.length || 0})
+          </TabsTrigger>
+          <TabsTrigger value="archived" className="gap-2">
+            <Archive className="h-4 w-4" />
+            Archivadas ({archivedCases?.length || 0})
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Active Proposals Tab */}
+        <TabsContent value="active">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Propuestas Activas</CardTitle>
+              <TableSearch
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Buscar propuesta..."
+              />
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredData && filteredData.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <SortableTableHead
+                        sortKey="title"
+                        currentSortKey={sortConfig.key}
+                        currentDirection={sortConfig.direction}
+                        onSort={handleSort}
+                      >
+                        Propuesta
+                      </SortableTableHead>
+                      <SortableTableHead
+                        sortKey="clientName"
+                        currentSortKey={sortConfig.key}
+                        currentDirection={sortConfig.direction}
+                        onSort={handleSort}
+                      >
+                        Cliente
+                      </SortableTableHead>
+                      <SortableTableHead
+                        sortKey="need_type"
+                        currentSortKey={sortConfig.key}
+                        currentDirection={sortConfig.direction}
+                        onSort={handleSort}
+                      >
+                        Tipo de Necesidad
+                      </SortableTableHead>
+                      <SortableTableHead
+                        sortKey="servicesCount"
+                        currentSortKey={sortConfig.key}
+                        currentDirection={sortConfig.direction}
+                        onSort={handleSort}
+                        className="text-center"
+                      >
+                        Servicios
+                      </SortableTableHead>
+                      <SortableTableHead
+                        sortKey="totalCost"
+                        currentSortKey={sortConfig.key}
+                        currentDirection={sortConfig.direction}
+                        onSort={handleSort}
+                        className="text-right"
+                      >
+                        Costo Total
+                      </SortableTableHead>
+                      <SortableTableHead
+                        sortKey="status"
+                        currentSortKey={sortConfig.key}
+                        currentDirection={sortConfig.direction}
+                        onSort={handleSort}
+                      >
+                        Estatus
+                      </SortableTableHead>
+                      <SortableTableHead
+                        sortKey="assignedName"
+                        currentSortKey={sortConfig.key}
+                        currentDirection={sortConfig.direction}
+                        onSort={handleSort}
+                      >
+                        Responsable
+                      </SortableTableHead>
+                      <th className="w-[50px]"></th>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-center py-12">
-              <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-              <h3 className="text-lg font-medium mb-2">No hay propuestas</h3>
-              <p className="text-muted-foreground mb-4">Crea tu primera propuesta para comenzar</p>
-              <Button onClick={() => setIsOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Nueva Propuesta
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredData.map((caseItem) => {
+                      const proposalStatus = mapCaseStatusToProposalStatus(caseItem.status);
+                      const statusConfig = PROPOSAL_STATUS_CONFIG[proposalStatus];
+                      const isDraft = proposalStatus === "draft";
+                      
+                      return (
+                        <TableRow key={caseItem.id}>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-muted-foreground" />
+                              {caseItem.title}
+                            </div>
+                          </TableCell>
+                          <TableCell>{caseItem.clientName}</TableCell>
+                          <TableCell>
+                            {caseItem.need_type ? (
+                              <Badge variant="outline">{caseItem.need_type}</Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">Sin definir</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="secondary">{caseItem.servicesCount}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatCurrency(caseItem.totalCost)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={statusConfig.color}>
+                              <span className="flex items-center gap-1">
+                                {statusConfig.icon}
+                                {statusConfig.label}
+                              </span>
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm">{caseItem.assignedName}</span>
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {isDraft && (
+                                  <DropdownMenuItem onClick={() => {
+                                    window.location.href = `/propuestas/${caseItem.id}/editar`;
+                                  }}>
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Editar Propuesta
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem onClick={() => setStatusChangeCase(caseItem)}>
+                                  <ArrowRightLeft className="mr-2 h-4 w-4" />
+                                  Cambiar Estatus
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setViewProposalCase(caseItem)}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  Ver Propuesta
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={() => archiveProposalMutation.mutate(caseItem.id)}
+                                  disabled={archiveProposalMutation.isPending}
+                                  className="text-muted-foreground"
+                                >
+                                  <Archive className="mr-2 h-4 w-4" />
+                                  Archivar Propuesta
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-12">
+                  <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No hay propuestas</h3>
+                  <p className="text-muted-foreground mb-4">Crea tu primera propuesta para comenzar</p>
+                  <Button onClick={() => setIsOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Nueva Propuesta
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Archived Proposals Tab */}
+        <TabsContent value="archived">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Archive className="h-5 w-5" />
+                Propuestas Archivadas
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoadingArchived ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : archivedCases && archivedCases.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <th className="text-left font-medium p-2">Propuesta</th>
+                      <th className="text-left font-medium p-2">Cliente</th>
+                      <th className="text-left font-medium p-2">Tipo de Necesidad</th>
+                      <th className="text-left font-medium p-2">Archivada</th>
+                      <th className="w-[100px]"></th>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {archivedCases.map((caseItem) => (
+                      <TableRow key={caseItem.id} className="opacity-70">
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <Archive className="h-4 w-4 text-muted-foreground" />
+                            {caseItem.title}
+                          </div>
+                        </TableCell>
+                        <TableCell>{getClientName(caseItem.client_id)}</TableCell>
+                        <TableCell>
+                          {caseItem.need_type ? (
+                            <Badge variant="outline">{caseItem.need_type}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">Sin definir</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm text-muted-foreground">
+                            {new Date(caseItem.updated_at).toLocaleDateString('es-MX')}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => restoreProposalMutation.mutate(caseItem.id)}
+                            disabled={restoreProposalMutation.isPending}
+                            className="gap-2"
+                          >
+                            <ArchiveRestore className="h-4 w-4" />
+                            Restaurar
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-12">
+                  <Archive className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No hay propuestas archivadas</h3>
+                  <p className="text-muted-foreground">Las propuestas que archives aparecerán aquí</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* View Proposal Modal */}
       <Dialog open={!!viewProposalCase} onOpenChange={(open) => !open && setViewProposalCase(null)}>
