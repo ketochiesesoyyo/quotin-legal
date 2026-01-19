@@ -21,6 +21,7 @@ import { TemplateSelector } from "@/components/propuestas/TemplateSelector";
 import { CompiledDocumentPreview, buildCompilerContext } from "@/components/propuestas/CompiledDocumentPreview";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { DocumentTemplate } from "@/components/plantillas/types";
@@ -954,7 +955,7 @@ export default function PropuestaEditar() {
               {/* Progress */}
               <ProgressIndicator steps={progressSteps} progress={progress} />
 
-              {/* Background */}
+              {/* ========== MIS NOTAS ========== */}
               <BackgroundSection
                 caseId={id!}
                 userNotes={userNotes}
@@ -1031,17 +1032,14 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                 }}
               />
 
-              {/* Recipient Section - who the proposal is addressed to */}
+              {/* ========== DESTINATARIO DE LA PROPUESTA ========== */}
               <RecipientSection
                 availableContacts={allContacts}
                 recipient={recipientData}
                 onUpdateRecipient={setRecipientData}
               />
 
-              {/* Validated Data */}
-              <ValidatedDataSection data={validatedData} />
-
-              {/* Document Template Selector (Sprint 2) */}
+              {/* ========== SELECCIÓN DE PLANTILLA ========== */}
               <TemplateSelector
                 selectedTemplateId={selectedDocumentTemplate?.id || null}
                 onSelectTemplate={(template) => {
@@ -1053,42 +1051,88 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                 }}
               />
 
-              {/* Pricing Mode Selector - always visible */}
-              <PricingModeSelector
-                pricingMode={pricingMode}
-                onPricingModeChange={handlePricingModeChange}
-                preSelectedCount={services.filter(s => s.confidence >= 80).length}
-                selectedCount={services.filter(s => s.isSelected).length}
-              />
+              {/* ========== I. ANTECEDENTES Y ALCANCE DE LOS SERVICIOS ========== */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold">I. ANTECEDENTES Y ALCANCE DE LOS SERVICIOS</CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Confirma los servicios para completar los antecedentes de la propuesta
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Services List */}
+                  <ServicesSection
+                    services={services}
+                    pricingMode={pricingMode}
+                    onToggleService={handleToggleService}
+                    onUpdateCustomText={handleUpdateCustomText}
+                    onUpdateServiceFee={handleUpdateServiceFee}
+                    showModeSelector={false}
+                    onGenerateContent={handleGenerateContent}
+                    isGeneratingContent={isGeneratingContent}
+                    hasGeneratedContent={!!generatedContent}
+                  />
+                </CardContent>
+              </Card>
 
-              {/* Pricing Section - appears BEFORE services when in global mode */}
-              {pricingMode === 'global' && (
-                <PricingSection
-                  templates={pricingTemplates}
-                  selectedTemplateId={selectedPricingId}
-                  customInitialPayment={customInitialPayment}
-                  customMonthlyRetainer={customMonthlyRetainer}
-                  customRetainerMonths={customRetainerMonths}
-                  installments={installments}
-                  retainerStartDescription={retainerStartDescription}
-                  canCancelWithoutPenalty={canCancelWithoutPenalty}
-                  onSelectTemplate={handleSelectTemplate}
-                  onUpdatePricing={handleUpdatePricing}
-                />
-              )}
+              {/* ========== II. PROPUESTA DE HONORARIOS ========== */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold">II. PROPUESTA DE HONORARIOS</CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Configura cómo se presentarán los honorarios en la propuesta
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Pricing Mode Selector */}
+                  <PricingModeSelector
+                    pricingMode={pricingMode}
+                    onPricingModeChange={handlePricingModeChange}
+                    preSelectedCount={services.filter(s => s.confidence >= 80).length}
+                    selectedCount={services.filter(s => s.isSelected).length}
+                  />
 
-              {/* Services List - without mode selector since it's now separate */}
-              <ServicesSection
-                services={services}
-                pricingMode={pricingMode}
-                onToggleService={handleToggleService}
-                onUpdateCustomText={handleUpdateCustomText}
-                onUpdateServiceFee={handleUpdateServiceFee}
-                showModeSelector={false}
-                onGenerateContent={handleGenerateContent}
-                isGeneratingContent={isGeneratingContent}
-                hasGeneratedContent={!!generatedContent}
-              />
+                  {/* Pricing Section - only when in global mode */}
+                  {pricingMode === 'global' && (
+                    <PricingSection
+                      templates={pricingTemplates}
+                      selectedTemplateId={selectedPricingId}
+                      customInitialPayment={customInitialPayment}
+                      customMonthlyRetainer={customMonthlyRetainer}
+                      customRetainerMonths={customRetainerMonths}
+                      installments={installments}
+                      retainerStartDescription={retainerStartDescription}
+                      canCancelWithoutPenalty={canCancelWithoutPenalty}
+                      onSelectTemplate={handleSelectTemplate}
+                      onUpdatePricing={handleUpdatePricing}
+                    />
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* ========== III. GARANTÍAS DE SATISFACCIÓN ========== */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold">III. GARANTÍAS DE SATISFACCIÓN</CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Texto fijo definido en la plantilla seleccionada
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  {selectedDocumentTemplate ? (
+                    <div className="bg-muted/30 rounded-lg p-4">
+                      <p className="text-sm text-muted-foreground">
+                        {firmSettings?.guarantees_text || 
+                          "Las garantías de satisfacción se cargarán desde la configuración del despacho o la plantilla seleccionada."}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-muted-foreground">
+                      <p className="text-sm">Selecciona una plantilla para ver las garantías configuradas</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </ScrollArea>
         </div>
