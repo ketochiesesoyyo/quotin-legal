@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -93,6 +93,9 @@ export default function PropuestaEditar() {
 
   // Sprint 4: Text overrides for inline preview editing
   const [textOverrides, setTextOverrides] = useState<TextOverride[]>([]);
+
+  // Ref for scrolling to Antecedentes section
+  const antecedentesRef = useRef<HTMLDivElement>(null);
 
   // Sprint 3: Proposal versions and audit logging
   const { saveVersion, versions, latestVersionNumber, isSaving: isSavingVersion } = useProposalVersions(id);
@@ -687,6 +690,14 @@ Finalmente, sabemos que gracias al crecimiento sostenido que han tenido, las Emp
 Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en la medida de lo posible y con total apego a derecho, los recursos económicos, humanos y materiales con que cuentan, así como implementar una estructura corporativa sólida de cara a las proyecciones de crecimiento que se tienen.`;
       
       setAiSuggestion(generatedBackground);
+      
+      // Scroll to Antecedentes section with smooth animation
+      setTimeout(() => {
+        antecedentesRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
+        });
+      }, 100);
     } catch (error) {
       toast({
         title: "Error",
@@ -1051,7 +1062,7 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
               />
 
               {/* ========== I. ANTECEDENTES Y ALCANCE DE LOS SERVICIOS ========== */}
-              <Card>
+              <Card ref={antecedentesRef}>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base font-semibold">I. ANTECEDENTES Y ALCANCE DE LOS SERVICIOS</CardTitle>
                   <p className="text-xs text-muted-foreground">
