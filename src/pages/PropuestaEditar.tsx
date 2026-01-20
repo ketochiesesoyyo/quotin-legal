@@ -694,7 +694,8 @@ export default function PropuestaEditar() {
     setIsGenerating(true);
     try {
       await saveMutation.mutateAsync();
-      setShowFullPreview(true); // Open full preview modal after saving
+      // Navigate to the review step after saving
+      navigate(`/propuestas/${id}/revision`);
     } finally {
       setIsGenerating(false);
     }

@@ -805,7 +805,7 @@ export function ProposalPreview({
         </div>
       </ScrollArea>
 
-      {/* Generate Button */}
+      {/* Save and Continue Button */}
       <div className="p-4 border-t bg-muted/30 shrink-0">
         <Button
           className="w-full"
@@ -814,11 +814,11 @@ export function ProposalPreview({
           disabled={isGenerating || !hasContent}
         >
           {isGenerating ? (
-            <>Guardando...</>
+            <>Guardando borrador...</>
           ) : (
             <>
               <ArrowRight className="h-5 w-5 mr-2" />
-              Siguiente paso
+              Guardar y continuar
             </>
           )}
         </Button>
