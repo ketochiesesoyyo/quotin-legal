@@ -21,6 +21,7 @@ import { RecipientSection, type RecipientData } from "@/components/propuestas/Re
 import { TemplateSelector } from "@/components/propuestas/TemplateSelector";
 import { CompiledDocumentPreview, buildCompilerContext } from "@/components/propuestas/CompiledDocumentPreview";
 import { ProposalDocumentEditor } from "@/components/propuestas/ProposalDocumentEditor";
+import { HonorariosGenerator } from "@/components/propuestas/HonorariosGenerator";
 import { DocumentSidebar } from "@/components/propuestas/DocumentSidebar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -1230,39 +1231,32 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
               </Card>
 
               {/* ========== II. PROPUESTA DE HONORARIOS ========== */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base font-semibold">II. PROPUESTA DE HONORARIOS</CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    Configura cómo se presentarán los honorarios en la propuesta
-                  </p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Pricing Mode Selector */}
-                  <PricingModeSelector
-                    pricingMode={pricingMode}
-                    onPricingModeChange={handlePricingModeChange}
-                    preSelectedCount={services.filter(s => s.confidence >= 80).length}
-                    selectedCount={services.filter(s => s.isSelected).length}
-                  />
-
-                  {/* Pricing Section - only when in global mode */}
-                  {pricingMode === 'global' && (
-                    <PricingSection
-                      templates={pricingTemplates}
-                      selectedTemplateId={selectedPricingId}
-                      customInitialPayment={customInitialPayment}
-                      customMonthlyRetainer={customMonthlyRetainer}
-                      customRetainerMonths={customRetainerMonths}
-                      installments={installments}
-                      retainerStartDescription={retainerStartDescription}
-                      canCancelWithoutPenalty={canCancelWithoutPenalty}
-                      onSelectTemplate={handleSelectTemplate}
-                      onUpdatePricing={handleUpdatePricing}
-                    />
-                  )}
-                </CardContent>
-              </Card>
+              <HonorariosGenerator
+                selectedServices={services.filter(s => s.isSelected)}
+                pricingMode={pricingMode}
+                onPricingModeChange={handlePricingModeChange}
+                initialPayment={customInitialPayment}
+                monthlyRetainer={customMonthlyRetainer}
+                retainerMonths={customRetainerMonths}
+                paymentInstallments={installments}
+                onInitialPaymentChange={setCustomInitialPayment}
+                onMonthlyRetainerChange={setCustomMonthlyRetainer}
+                onRetainerMonthsChange={setCustomRetainerMonths}
+                clientObjective={caseData?.need_type || "los servicios solicitados"}
+                onInsertHonorarios={(text) => {
+                  // For now, we'll set this in a state that can be used later
+                  // When document editor is implemented, this will insert into draft_content
+                  toast({
+                    title: "Honorarios generados",
+                    description: "El texto de honorarios está listo para insertar en el documento",
+                  });
+                  // Could also append to draft content if in document mode
+                  if (draftContent) {
+                    // Append to draft content
+                    setDraftContent(prev => prev + "\n\n" + text);
+                  }
+                }}
+              />
 
               {/* ========== III. GARANTÍAS DE SATISFACCIÓN ========== */}
               <Card>
