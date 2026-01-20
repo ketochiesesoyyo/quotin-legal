@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { GeneratedContentPreview } from "./GeneratedContentPreview";
-import type { ServiceWithConfidence, PricingMode, PaymentInstallment } from "./types";
+import type { ServiceWithConfidence, PricingMode, PaymentInstallment, PricingTemplate } from "./types";
 import { formatCurrency, numberToWords } from "@/lib/number-to-words";
 
 interface HonorariosGeneratorProps {
@@ -23,6 +24,10 @@ interface HonorariosGeneratorProps {
   onInstallmentsChange: (installments: PaymentInstallment[]) => void;
   clientObjective?: string;
   onInsertHonorarios: (text: string) => void;
+  // New: Pricing templates
+  pricingTemplates?: PricingTemplate[];
+  selectedTemplateId?: string | null;
+  onTemplateSelect?: (templateId: string | null) => void;
 }
 
 export function HonorariosGenerator({
@@ -39,7 +44,12 @@ export function HonorariosGenerator({
   onInstallmentsChange,
   clientObjective = "los servicios solicitados",
   onInsertHonorarios,
+  pricingTemplates = [],
+  selectedTemplateId,
+  onTemplateSelect,
 }: HonorariosGeneratorProps) {
+  // Find selected template for exclusions text
+  const selectedTemplate = pricingTemplates.find(t => t.id === selectedTemplateId);
   const [generatedText, setGeneratedText] = useState<string>("");
   const [editedText, setEditedText] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -171,6 +181,12 @@ export function HonorariosGenerator({
       lines.push(`${letterPrefix} Una iguala mensual en cantidad de ${formatCurrency(monthly)} (${numberToWords(monthly)}) más IVA por un plazo de ${retainerMonths} meses a fin de realizar las labores de ejecución, implementación y acompañamiento de la propuesta.`);
     }
 
+    // Add exclusions text from template if available
+    if (selectedTemplate?.exclusions_text) {
+      lines.push("");
+      lines.push(selectedTemplate.exclusions_text);
+    }
+
     return lines.join("\n");
   };
 
@@ -265,6 +281,44 @@ export function HonorariosGenerator({
         {/* Global mode: Manual fee inputs */}
         {pricingMode === "global" && (
           <div className="space-y-4">
+            {/* Pricing Template Selector */}
+            {pricingTemplates.length > 0 && onTemplateSelect && (
+              <div className="bg-primary/5 rounded-lg p-4 space-y-3 border border-primary/20">
+                <Label className="text-sm font-medium">
+                  Usar plantilla de honorarios (opcional)
+                </Label>
+                <Select
+                  value={selectedTemplateId || "none"}
+                  onValueChange={(value) => onTemplateSelect(value === "none" ? null : value)}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Seleccionar plantilla..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin plantilla - configurar manualmente</SelectItem>
+                    {pricingTemplates.map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        <div className="flex items-center gap-2">
+                          <span>{template.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {template.initial_payment ? `${formatCurrency(Number(template.initial_payment))}` : ""}
+                            {template.initial_payment && template.monthly_retainer ? " + " : ""}
+                            {template.monthly_retainer ? `${formatCurrency(Number(template.monthly_retainer))}/mes` : ""}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedTemplate && (
+                  <p className="text-xs text-muted-foreground">
+                    Plantilla seleccionada: {selectedTemplate.initial_payment_split || "100"}% de distribución
+                    {selectedTemplate.exclusions_text && " • Incluye texto de exclusiones"}
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Fee amounts */}
             <div className="bg-accent/50 rounded-lg p-4 space-y-4 border border-accent">
               <Label className="text-sm font-medium">
@@ -318,14 +372,24 @@ export function HonorariosGenerator({
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const remainingPercentage = 100 - paymentInstallments.reduce((sum, i) => sum + i.percentage, 0);
-                      onInstallmentsChange([
-                        ...paymentInstallments,
-                        { 
-                          percentage: Math.max(0, remainingPercentage), 
-                          description: "al completar la siguiente etapa" 
-                        }
-                      ]);
+                      // Redistribute percentages equally among all installments
+                      const newCount = paymentInstallments.length + 1;
+                      const equalPercentage = Math.floor(100 / newCount);
+                      const remainder = 100 - (equalPercentage * newCount);
+                      
+                      // Redistribute existing installments
+                      const redistributed = paymentInstallments.map((inst, idx) => ({
+                        ...inst,
+                        percentage: equalPercentage + (idx === 0 ? remainder : 0)
+                      }));
+                      
+                      // Add new installment
+                      redistributed.push({
+                        percentage: equalPercentage,
+                        description: "al completar la siguiente etapa"
+                      });
+                      
+                      onInstallmentsChange(redistributed);
                     }}
                   >
                     <Plus className="h-4 w-4 mr-1" />

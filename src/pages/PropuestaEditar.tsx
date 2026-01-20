@@ -520,7 +520,12 @@ export default function PropuestaEditar() {
     );
   };
 
-  const handleSelectTemplate = (templateId: string) => {
+  const handleSelectTemplate = (templateId: string | null) => {
+    if (!templateId) {
+      setSelectedPricingId(null);
+      return;
+    }
+    
     const template = pricingTemplates.find((t) => t.id === templateId);
     if (template) {
       setSelectedPricingId(templateId);
@@ -530,15 +535,22 @@ export default function PropuestaEditar() {
       // Convert template split to installments if available
       if (template.initial_payment_split) {
         const parts = template.initial_payment_split.split("/").map(p => parseInt(p.trim()));
+        const defaultDescriptions = [
+          "al momento de aceptación de la presente propuesta",
+          "al momento de presentación de la propuesta de reestructura",
+          "al completar la implementación",
+          "al finalizar el proyecto"
+        ];
         const newInstallments = parts.map((percentage, idx) => ({
           percentage,
-          description: idx === 0 
-            ? "al momento de aceptación de la presente propuesta" 
-            : idx === parts.length - 1 
-              ? "al momento de presentación de la propuesta" 
-              : `en el pago ${idx + 1}`,
+          description: defaultDescriptions[idx] || `en el pago ${idx + 1}`,
         }));
         setInstallments(newInstallments);
+      } else {
+        // Default to 100% single payment if no split defined
+        setInstallments([
+          { percentage: 100, description: "al momento de aceptación de la presente propuesta" }
+        ]);
       }
       // Automatically switch to global mode when selecting template
       setPricingMode('global');
@@ -1244,6 +1256,9 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                 onRetainerMonthsChange={setCustomRetainerMonths}
                 onInstallmentsChange={setInstallments}
                 clientObjective={caseData?.need_type || "los servicios solicitados"}
+                pricingTemplates={pricingTemplates}
+                selectedTemplateId={selectedPricingId}
+                onTemplateSelect={handleSelectTemplate}
                 onInsertHonorarios={(text) => {
                   // For now, we'll set this in a state that can be used later
                   // When document editor is implemented, this will insert into draft_content
