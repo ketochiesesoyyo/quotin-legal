@@ -506,6 +506,9 @@ export default function PropuestaEditar() {
   const handlePricingModeChange = (mode: PricingMode) => {
     setPricingMode(mode);
     
+    // Clear honorarios narrative so the preview updates to new mode format
+    setHonorariosNarrative("");
+    
     // If switching to global, open the pricing config panel
     if (mode === 'global') {
       setIsPricingConfigOpen(true);
