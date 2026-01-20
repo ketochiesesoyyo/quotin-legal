@@ -98,7 +98,7 @@ export function HonorariosGenerator({
 
     // Add totals
     const { totalInitial, totalMonthly } = calculateTotals();
-    lines.push("─".repeat(50));
+    lines.push("─".repeat(30));
     lines.push("TOTAL:");
     if (totalInitial > 0) {
       lines.push(`• Pago inicial: ${formatCurrency(totalInitial)} + IVA`);
