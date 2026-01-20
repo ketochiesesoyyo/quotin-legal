@@ -232,6 +232,9 @@ export interface ProposalPreviewData {
 
   // Optional narrative block for services (when user inserts the generated services text)
   servicesNarrative?: string;
+
+  // Optional narrative block for fees/honorarios in global mode (when user inserts the generated text)
+  honorariosNarrative?: string;
   
   // Validated data (optional for now)
   validatedData: {
