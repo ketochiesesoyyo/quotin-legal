@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { generateFullDocumentHTML, parseDocumentHTML } from "@/lib/document-html-utils";
 import type { DocumentTemplate, TemplateSchema } from "@/components/plantillas/types";
 import type {
   Case,
@@ -1382,8 +1383,21 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
             <TabsContent value="document" className="flex-1 m-0 min-h-0 overflow-hidden">
               <ProposalDocumentEditor
                 caseId={id!}
-                initialContent={draftContent || previewData.background || "<p>Comienza a escribir tu propuesta aquí...</p>"}
-                onContentChange={(content) => setDraftContent(content)}
+                initialContent={draftContent || generateFullDocumentHTML(previewData)}
+                onContentChange={(content) => {
+                  setDraftContent(content);
+                  // Parse HTML and sync back to preview states
+                  const parsed = parseDocumentHTML(content);
+                  if (parsed.background !== undefined) {
+                    setProposalBackground(parsed.background);
+                  }
+                  if (parsed.servicesNarrative !== undefined) {
+                    setServicesNarrative(parsed.servicesNarrative);
+                  }
+                  if (parsed.honorariosNarrative !== undefined) {
+                    setHonorariosNarrative(parsed.honorariosNarrative);
+                  }
+                }}
                 clientContext={{
                   clientName: client?.group_name || "Cliente",
                   groupAlias: client?.alias || undefined,
