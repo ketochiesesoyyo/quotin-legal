@@ -1242,6 +1242,7 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                 onInitialPaymentChange={setCustomInitialPayment}
                 onMonthlyRetainerChange={setCustomMonthlyRetainer}
                 onRetainerMonthsChange={setCustomRetainerMonths}
+                onInstallmentsChange={setInstallments}
                 clientObjective={caseData?.need_type || "los servicios solicitados"}
                 onInsertHonorarios={(text) => {
                   // For now, we'll set this in a state that can be used later

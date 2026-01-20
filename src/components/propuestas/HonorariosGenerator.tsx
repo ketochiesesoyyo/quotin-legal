@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Calculator, ListOrdered, Wallet, Wand2 } from "lucide-react";
+import { Calculator, ListOrdered, Wallet, Wand2, Plus, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,7 @@ interface HonorariosGeneratorProps {
   onInitialPaymentChange: (value: number) => void;
   onMonthlyRetainerChange: (value: number) => void;
   onRetainerMonthsChange: (value: number) => void;
+  onInstallmentsChange: (installments: PaymentInstallment[]) => void;
   clientObjective?: string;
   onInsertHonorarios: (text: string) => void;
 }
@@ -35,6 +36,7 @@ export function HonorariosGenerator({
   onInitialPaymentChange,
   onMonthlyRetainerChange,
   onRetainerMonthsChange,
+  onInstallmentsChange,
   clientObjective = "los servicios solicitados",
   onInsertHonorarios,
 }: HonorariosGeneratorProps) {
@@ -262,42 +264,142 @@ export function HonorariosGenerator({
 
         {/* Global mode: Manual fee inputs */}
         {pricingMode === "global" && (
-          <div className="bg-accent/50 rounded-lg p-4 space-y-4 border border-accent">
-            <Label className="text-sm font-medium">
-              Configurar honorarios globales
-            </Label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Pago inicial</Label>
-                <Input
-                  type="number"
-                  value={initialPayment || ""}
-                  onChange={(e) => onInitialPaymentChange(parseFloat(e.target.value) || 0)}
-                  placeholder="300000"
-                  className="h-9"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Iguala mensual</Label>
-                <Input
-                  type="number"
-                  value={monthlyRetainer || ""}
-                  onChange={(e) => onMonthlyRetainerChange(parseFloat(e.target.value) || 0)}
-                  placeholder="54000"
-                  className="h-9"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Meses de iguala</Label>
-                <Input
-                  type="number"
-                  value={retainerMonths}
-                  onChange={(e) => onRetainerMonthsChange(parseInt(e.target.value) || 12)}
-                  placeholder="12"
-                  className="h-9"
-                />
+          <div className="space-y-4">
+            {/* Fee amounts */}
+            <div className="bg-accent/50 rounded-lg p-4 space-y-4 border border-accent">
+              <Label className="text-sm font-medium">
+                Configurar honorarios globales
+              </Label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Pago inicial</Label>
+                  <Input
+                    type="number"
+                    value={initialPayment || ""}
+                    onChange={(e) => onInitialPaymentChange(parseFloat(e.target.value) || 0)}
+                    placeholder="300000"
+                    className="h-9"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Iguala mensual</Label>
+                  <Input
+                    type="number"
+                    value={monthlyRetainer || ""}
+                    onChange={(e) => onMonthlyRetainerChange(parseFloat(e.target.value) || 0)}
+                    placeholder="54000"
+                    className="h-9"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Meses de iguala</Label>
+                  <Input
+                    type="number"
+                    value={retainerMonths}
+                    onChange={(e) => onRetainerMonthsChange(parseInt(e.target.value) || 12)}
+                    placeholder="12"
+                    className="h-9"
+                  />
+                </div>
               </div>
             </div>
+
+            {/* Payment installments editor - only show when initial payment > 0 */}
+            {initialPayment > 0 && (
+              <div className="bg-muted/50 rounded-lg p-4 space-y-4 border border-border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium">Distribución del pago inicial</Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Define cómo se dividirá el pago de {formatCurrency(initialPayment)}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const remainingPercentage = 100 - paymentInstallments.reduce((sum, i) => sum + i.percentage, 0);
+                      onInstallmentsChange([
+                        ...paymentInstallments,
+                        { 
+                          percentage: Math.max(0, remainingPercentage), 
+                          description: "al completar la siguiente etapa" 
+                        }
+                      ]);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Agregar parcialidad
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  {paymentInstallments.map((installment, index) => (
+                    <div key={index} className="flex items-start gap-3 p-3 bg-background rounded-lg border">
+                      <div className="w-20 shrink-0">
+                        <Label className="text-xs text-muted-foreground">Porcentaje</Label>
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            value={installment.percentage}
+                            onChange={(e) => {
+                              const updated = [...paymentInstallments];
+                              updated[index] = { ...updated[index], percentage: parseInt(e.target.value) || 0 };
+                              onInstallmentsChange(updated);
+                            }}
+                            className="h-8 text-sm"
+                            min={0}
+                            max={100}
+                          />
+                          <span className="text-sm text-muted-foreground">%</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatCurrency(initialPayment * (installment.percentage / 100))}
+                        </p>
+                      </div>
+                      <div className="flex-1">
+                        <Label className="text-xs text-muted-foreground">Condición de pago</Label>
+                        <Input
+                          value={installment.description}
+                          onChange={(e) => {
+                            const updated = [...paymentInstallments];
+                            updated[index] = { ...updated[index], description: e.target.value };
+                            onInstallmentsChange(updated);
+                          }}
+                          placeholder="al momento de..."
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      {paymentInstallments.length > 1 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive shrink-0 mt-5"
+                          onClick={() => {
+                            onInstallmentsChange(paymentInstallments.filter((_, i) => i !== index));
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Validation message */}
+                {(() => {
+                  const totalPercentage = paymentInstallments.reduce((sum, i) => sum + i.percentage, 0);
+                  if (totalPercentage !== 100) {
+                    return (
+                      <p className="text-xs text-destructive">
+                        ⚠️ Los porcentajes suman {totalPercentage}%. Deben sumar 100%.
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+            )}
           </div>
         )}
 
