@@ -549,10 +549,27 @@ ${selectedServices.map(s => `- ${s.name}: "${s.id}"`).join("\n")}`;
   }
 
   const aiResponse = await response.json();
-  const content = aiResponse.choices?.[0]?.message?.content;
+  console.log("AI Response structure:", JSON.stringify({
+    hasChoices: !!aiResponse.choices,
+    choiceCount: aiResponse.choices?.length,
+    hasContent: !!aiResponse.choices?.[0]?.message?.content,
+    hasToolCalls: !!aiResponse.choices?.[0]?.message?.tool_calls,
+  }));
+  
+  let content = aiResponse.choices?.[0]?.message?.content;
+  
+  // Some models return content as empty string with tool_calls, handle that edge case
+  if (!content && aiResponse.choices?.[0]?.message?.tool_calls) {
+    const toolCall = aiResponse.choices[0].message.tool_calls[0];
+    if (toolCall?.function?.arguments) {
+      console.log("Extracting content from tool_calls arguments");
+      content = toolCall.function.arguments;
+    }
+  }
 
   if (!content) {
-    throw new Error("No content received from AI");
+    console.error("No content in AI response:", JSON.stringify(aiResponse, null, 2).substring(0, 1000));
+    throw new Error("No content received from AI. Response may have been blocked or model returned empty response.");
   }
 
   console.log("Raw AI response:", content.substring(0, 500));
