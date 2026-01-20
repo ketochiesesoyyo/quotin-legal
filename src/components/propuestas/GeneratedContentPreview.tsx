@@ -124,8 +124,8 @@ export function GeneratedContentPreview({
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border border-primary/20">
-                <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+              <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border border-primary/20 overflow-hidden">
+                <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap break-words overflow-wrap-anywhere">
                   {displayText}
                 </p>
               </div>
