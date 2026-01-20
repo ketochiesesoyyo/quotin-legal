@@ -88,6 +88,7 @@ export default function PropuestaEditar() {
   const [generatedServicesContent, setGeneratedServicesContent] = useState<string | undefined>();
   const [editedServicesContent, setEditedServicesContent] = useState<string | undefined>();
   const [servicesNarrative, setServicesNarrative] = useState<string>("");
+  const [honorariosNarrative, setHonorariosNarrative] = useState<string>("");
   const [recipientData, setRecipientData] = useState<RecipientData>({
     fullName: "[Nombre del Contacto]",
     position: null,
@@ -978,6 +979,7 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
       })),
       background: proposalBackground,
       servicesNarrative,
+      honorariosNarrative,
       validatedData: {
         rfc: entities[0]?.rfc || null,
         opinion32d: null,
@@ -1013,7 +1015,7 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
         : undefined,
       generatedContent: generatedContent || undefined,
     };
-  }, [client, entities, proposalBackground, servicesNarrative, services, customInitialPayment, customMonthlyRetainer, customRetainerMonths, installments, retainerStartDescription, canCancelWithoutPenalty, pricingMode, firmSettings, recipientData, generatedContent]);
+  }, [client, entities, proposalBackground, servicesNarrative, honorariosNarrative, services, customInitialPayment, customMonthlyRetainer, customRetainerMonths, installments, retainerStartDescription, canCancelWithoutPenalty, pricingMode, firmSettings, recipientData, generatedContent]);
 
   // Build compiler context for template-based preview
   const compilerContext = useMemo(() => {
@@ -1261,15 +1263,14 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                 selectedTemplateId={selectedPricingId}
                 onTemplateSelect={handleSelectTemplate}
                 onInsertHonorarios={(text) => {
-                  // For now, we'll set this in a state that can be used later
-                  // When document editor is implemented, this will insert into draft_content
+                  // Set the honorarios narrative for the preview
+                  setHonorariosNarrative(text);
                   toast({
-                    title: "Honorarios generados",
-                    description: "El texto de honorarios está listo para insertar en el documento",
+                    title: "Honorarios insertados",
+                    description: "La sección II se actualizó con el texto de honorarios",
                   });
-                  // Could also append to draft content if in document mode
+                  // Also append to draft content if in document mode
                   if (draftContent) {
-                    // Append to draft content
                     setDraftContent(prev => prev + "\n\n" + text);
                   }
                 }}

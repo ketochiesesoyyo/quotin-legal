@@ -562,159 +562,176 @@ export function ProposalPreview({
               </section>
 
               {/* ============ II. PROPUESTA DE HONORARIOS ============ */}
-              {(data.pricing.totalAmount > 0 || data.selectedServices.length > 0) && (
+              {(data.pricing.totalAmount > 0 || data.selectedServices.length > 0 || data.honorariosNarrative) && (
                 <section className="mb-6">
                   <h2 className="text-base font-bold mb-4 text-primary">II. PROPUESTA DE HONORARIOS</h2>
 
-                  <EditableSection
-                    sectionId="pricing-intro"
-                    override={getOverride("pricing-intro")}
-                    onTextSelection={handleTextSelection}
-                    onRestoreOriginal={onRestoreOriginal ? () => onRestoreOriginal("pricing-intro") : undefined}
-                  >
-                    <p className="text-sm leading-relaxed mb-4">
-                      {getTextWithOverride("pricing-intro", FIXED_TEXTS.introHonorarios)}
-                    </p>
-                  </EditableSection>
-
-                  <div className="space-y-4 mb-4">
-                    {/* Services with description - always shown */}
-                    {data.selectedServices.length > 0 && (
-                      <div className="space-y-4">
-                        {data.selectedServices.map((item, index) => {
-                          const serviceText = item.customText || item.service.standard_text || item.service.description;
-                          
-                          // For per_service mode, also show pricing
-                          if (data.pricingMode === 'per_service') {
-                            const feeType = item.service.fee_type || 'one_time';
-                            const showOneTime = feeType === 'one_time' || feeType === 'both';
-                            const showMonthly = feeType === 'monthly' || feeType === 'both';
-                            const fee = item.customFee ?? (item.service.suggested_fee ? Number(item.service.suggested_fee) : 0);
-                            const monthlyFee = item.customMonthlyFee ?? (item.service.suggested_monthly_fee ? Number(item.service.suggested_monthly_fee) : 0);
-                            const hasFee = (showOneTime && fee > 0) || (showMonthly && monthlyFee > 0);
-
-                            return (
-                              <div key={item.service.id} className="pl-4">
-                                <p className="text-sm mb-1">
-                                  <strong>{String.fromCharCode(97 + index)}) {item.service.name}:</strong>
-                                </p>
-                                {serviceText && (
-                                  <p className="text-sm mb-2 ml-4 text-muted-foreground">
-                                    {serviceText}
-                                  </p>
-                                )}
-                                {hasFee && (
-                                  <p className="text-sm ml-4">
-                                    <strong>Honorarios:</strong>{" "}
-                                    {showOneTime && fee > 0 && (
-                                      <>
-                                        Un pago de <strong>{formatCurrency(fee)}</strong> más IVA
-                                        {showMonthly && monthlyFee > 0 ? ", más " : "."}
-                                      </>
-                                    )}
-                                    {showMonthly && monthlyFee > 0 && (
-                                      <>
-                                        una iguala mensual de <strong>{formatCurrency(monthlyFee)}</strong> más IVA.
-                                      </>
-                                    )}
-                                  </p>
-                                )}
-                              </div>
-                            );
-                          }
-
-                          // For summed and global modes, show only service name and description (no price breakdown)
-                          return (
-                            <div key={item.service.id} className="pl-4">
-                              <p className="text-sm mb-1">
-                                <strong>{String.fromCharCode(97 + index)}) {item.service.name}:</strong>
-                              </p>
-                              {serviceText && (
-                                <p className="text-sm ml-4 text-muted-foreground">
-                                  {serviceText}
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })}
+                  {/* If in global mode and narrative text has been inserted, show only the narrative */}
+                  {data.pricingMode === 'global' && data.honorariosNarrative ? (
+                    <EditableSection
+                      sectionId="honorarios-global"
+                      override={getOverride("honorarios-global")}
+                      onTextSelection={handleTextSelection}
+                      onRestoreOriginal={onRestoreOriginal ? () => onRestoreOriginal("honorarios-global") : undefined}
+                    >
+                      <div className="text-sm leading-relaxed whitespace-pre-line">
+                        {getTextWithOverride("honorarios-global", data.honorariosNarrative)}
                       </div>
-                    )}
-
-                    {/* Initial payment with installments */}
-                    {data.pricing.initialPayment > 0 && (
-                      <div className="pl-4 mt-4 pt-2 border-t border-dashed">
-                        <p className="text-sm mb-2">
-                          <strong>a) Pago inicial</strong> en cantidad de{" "}
-                          <strong>{formatCurrency(data.pricing.initialPayment)}</strong>{" "}
-                          ({numberToSpanishWords(data.pricing.initialPayment)} pesos 00/100 M.N.) más IVA
-                          {data.pricing.initialPaymentDescription && (
-                            <> correspondiente al {data.pricing.initialPaymentDescription}</>
-                          )}
-                          .
+                    </EditableSection>
+                  ) : (
+                    <>
+                      {/* Standard intro text */}
+                      <EditableSection
+                        sectionId="pricing-intro"
+                        override={getOverride("pricing-intro")}
+                        onTextSelection={handleTextSelection}
+                        onRestoreOriginal={onRestoreOriginal ? () => onRestoreOriginal("pricing-intro") : undefined}
+                      >
+                        <p className="text-sm leading-relaxed mb-4">
+                          {getTextWithOverride("pricing-intro", FIXED_TEXTS.introHonorarios)}
                         </p>
-                        
-                        {/* Installments breakdown */}
-                        {data.pricing.installments && data.pricing.installments.length > 1 && (
-                          <p className="text-sm ml-4 mb-2">
-                            Dicho honorario será cubierto{" "}
-                            {data.pricing.installments.map((inst, idx) => {
-                              const isLast = idx === data.pricing.installments.length - 1;
-                              const isSecondToLast = idx === data.pricing.installments.length - 2;
+                      </EditableSection>
+
+                      <div className="space-y-4 mb-4">
+                        {/* Services with description - only shown for per_service and summed modes */}
+                        {data.pricingMode !== 'global' && data.selectedServices.length > 0 && (
+                          <div className="space-y-4">
+                            {data.selectedServices.map((item, index) => {
+                              const serviceText = item.customText || item.service.standard_text || item.service.description;
                               
+                              // For per_service mode, also show pricing
+                              if (data.pricingMode === 'per_service') {
+                                const feeType = item.service.fee_type || 'one_time';
+                                const showOneTime = feeType === 'one_time' || feeType === 'both';
+                                const showMonthly = feeType === 'monthly' || feeType === 'both';
+                                const fee = item.customFee ?? (item.service.suggested_fee ? Number(item.service.suggested_fee) : 0);
+                                const monthlyFee = item.customMonthlyFee ?? (item.service.suggested_monthly_fee ? Number(item.service.suggested_monthly_fee) : 0);
+                                const hasFee = (showOneTime && fee > 0) || (showMonthly && monthlyFee > 0);
+
+                                return (
+                                  <div key={item.service.id} className="pl-4">
+                                    <p className="text-sm mb-1">
+                                      <strong>{String.fromCharCode(97 + index)}) {item.service.name}:</strong>
+                                    </p>
+                                    {serviceText && (
+                                      <p className="text-sm mb-2 ml-4 text-muted-foreground">
+                                        {serviceText}
+                                      </p>
+                                    )}
+                                    {hasFee && (
+                                      <p className="text-sm ml-4">
+                                        <strong>Honorarios:</strong>{" "}
+                                        {showOneTime && fee > 0 && (
+                                          <>
+                                            Un pago de <strong>{formatCurrency(fee)}</strong> más IVA
+                                            {showMonthly && monthlyFee > 0 ? ", más " : "."}
+                                          </>
+                                        )}
+                                        {showMonthly && monthlyFee > 0 && (
+                                          <>
+                                            una iguala mensual de <strong>{formatCurrency(monthlyFee)}</strong> más IVA.
+                                          </>
+                                        )}
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              }
+
+                              // For summed mode, show only service name and description (no price breakdown)
                               return (
-                                <span key={idx}>
-                                  un {inst.percentage}%
-                                  {inst.description && <> {inst.description}</>}
-                                  {isLast ? "." : isSecondToLast ? " y el " : ", "}
-                                </span>
+                                <div key={item.service.id} className="pl-4">
+                                  <p className="text-sm mb-1">
+                                    <strong>{String.fromCharCode(97 + index)}) {item.service.name}:</strong>
+                                  </p>
+                                  {serviceText && (
+                                    <p className="text-sm ml-4 text-muted-foreground">
+                                      {serviceText}
+                                    </p>
+                                  )}
+                                </div>
                               );
                             })}
-                          </p>
+                          </div>
                         )}
-                      </div>
-                    )}
 
-                    {/* Monthly retainer */}
-                    {data.pricing.monthlyRetainer > 0 && (
-                      <div className="pl-4">
-                        <p className="text-sm mb-2">
-                          <strong>b) Una iguala mensual</strong> en cantidad de{" "}
-                          <strong>{formatCurrency(data.pricing.monthlyRetainer)}</strong>{" "}
-                          ({numberToSpanishWords(data.pricing.monthlyRetainer)} pesos 00/100 M.N.) más IVA
-                          por un plazo de {data.pricing.retainerMonths} meses a fin de realizar las
-                          labores de ejecución, implementación y acompañamiento de la propuesta.
-                        </p>
-                        
-                        {/* Retainer start description */}
-                        {data.pricing.retainerStartDescription && (
-                          <p className="text-sm ml-4 mb-2">
-                            {data.pricing.retainerStartDescription}
-                            {data.pricing.canCancelWithoutPenalty && (
-                              <>, por lo que, en caso de optar por no continuar con el servicio, 
-                              podrá libremente hacerlo sin penalidad alguna bastando una comunicación 
-                              escrita o por correo electrónico</>
+                        {/* Initial payment with installments */}
+                        {data.pricing.initialPayment > 0 && (
+                          <div className="pl-4 mt-4 pt-2 border-t border-dashed">
+                            <p className="text-sm mb-2">
+                              <strong>a) Pago inicial</strong> en cantidad de{" "}
+                              <strong>{formatCurrency(data.pricing.initialPayment)}</strong>{" "}
+                              ({numberToSpanishWords(data.pricing.initialPayment)} pesos 00/100 M.N.) más IVA
+                              {data.pricing.initialPaymentDescription && (
+                                <> correspondiente al {data.pricing.initialPaymentDescription}</>
+                              )}
+                              .
+                            </p>
+                            
+                            {/* Installments breakdown */}
+                            {data.pricing.installments && data.pricing.installments.length > 1 && (
+                              <p className="text-sm ml-4 mb-2">
+                                Dicho honorario será cubierto{" "}
+                                {data.pricing.installments.map((inst, idx) => {
+                                  const isLast = idx === data.pricing.installments.length - 1;
+                                  const isSecondToLast = idx === data.pricing.installments.length - 2;
+                                  
+                                  return (
+                                    <span key={idx}>
+                                      un {inst.percentage}%
+                                      {inst.description && <> {inst.description}</>}
+                                      {isLast ? "." : isSecondToLast ? " y el " : ", "}
+                                    </span>
+                                  );
+                                })}
+                              </p>
                             )}
-                            .
-                          </p>
+                          </div>
+                        )}
+
+                        {/* Monthly retainer */}
+                        {data.pricing.monthlyRetainer > 0 && (
+                          <div className="pl-4">
+                            <p className="text-sm mb-2">
+                              <strong>b) Una iguala mensual</strong> en cantidad de{" "}
+                              <strong>{formatCurrency(data.pricing.monthlyRetainer)}</strong>{" "}
+                              ({numberToSpanishWords(data.pricing.monthlyRetainer)} pesos 00/100 M.N.) más IVA
+                              por un plazo de {data.pricing.retainerMonths} meses a fin de realizar las
+                              labores de ejecución, implementación y acompañamiento de la propuesta.
+                            </p>
+                            
+                            {/* Retainer start description */}
+                            {data.pricing.retainerStartDescription && (
+                              <p className="text-sm ml-4 mb-2">
+                                {data.pricing.retainerStartDescription}
+                                {data.pricing.canCancelWithoutPenalty && (
+                                  <>, por lo que, en caso de optar por no continuar con el servicio, 
+                                  podrá libremente hacerlo sin penalidad alguna bastando una comunicación 
+                                  escrita o por correo electrónico</>
+                                )}
+                                .
+                              </p>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
-                  </div>
 
-                  {/* Exclusions */}
-                  {data.pricing.exclusionsText && (
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {data.pricing.exclusionsText}
-                    </p>
-                  )}
-                  {!data.pricing.exclusionsText && (
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      La presente propuesta no incluye servicios o gastos adicionales que no se
-                      encuentren expresamente previstos tales como son gastos notariales, pago de
-                      derechos, cuotas de terceros, legalización o apostilla de documentos, entre
-                      otros que sean necesarios y que únicamente serán erogados previa autorización de
-                      su parte.
-                    </p>
+                      {/* Exclusions */}
+                      {data.pricing.exclusionsText && (
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          {data.pricing.exclusionsText}
+                        </p>
+                      )}
+                      {!data.pricing.exclusionsText && (
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          La presente propuesta no incluye servicios o gastos adicionales que no se
+                          encuentren expresamente previstos tales como son gastos notariales, pago de
+                          derechos, cuotas de terceros, legalización o apostilla de documentos, entre
+                          otros que sean necesarios y que únicamente serán erogados previa autorización de
+                          su parte.
+                        </p>
+                      )}
+                    </>
                   )}
                 </section>
               )}
