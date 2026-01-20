@@ -1306,6 +1306,13 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                 pricingTemplates={pricingTemplates}
                 selectedTemplateId={selectedPricingId}
                 onTemplateSelect={handleSelectTemplate}
+                onUpdateServiceFee={(serviceId, customFee, customMonthlyFee) => {
+                  setServices(prev => prev.map(s => 
+                    s.service.id === serviceId 
+                      ? { ...s, customFee: customFee ?? undefined, customMonthlyFee: customMonthlyFee ?? undefined }
+                      : s
+                  ));
+                }}
                 onInsertHonorarios={(text) => {
                   // Set the honorarios narrative for the preview
                   setHonorariosNarrative(text);
