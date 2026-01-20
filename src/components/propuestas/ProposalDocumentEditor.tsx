@@ -68,6 +68,12 @@ interface ProposalDocumentEditorProps {
   clientContext: ClientContext;
   services: ServiceContext[];
   onSave: (content: string) => Promise<void>;
+  /**
+   * Optional: keep parent state in sync on every keystroke so other flows
+   * (e.g., Guardar borrador / Guardar y continuar) persist the latest HTML
+   * even if the user didn't click "Guardar" inside the editor.
+   */
+  onContentChange?: (content: string) => void;
   onExportPDF?: () => void;
   onPreview?: () => void;
   isSaving?: boolean;
@@ -79,6 +85,7 @@ export function ProposalDocumentEditor({
   clientContext,
   services,
   onSave,
+  onContentChange,
   onExportPDF,
   onPreview,
   isSaving = false,
@@ -117,6 +124,7 @@ export function ProposalDocumentEditor({
     },
     onUpdate: ({ editor }) => {
       setHasChanges(true);
+      onContentChange?.(editor.getHTML());
     },
     onSelectionUpdate: ({ editor }) => {
       const { from, to } = editor.state.selection;
