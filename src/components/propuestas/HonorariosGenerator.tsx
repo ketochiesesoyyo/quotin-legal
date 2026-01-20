@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Calculator, ListOrdered, Wallet, Wand2, Plus, Trash2 } from "lucide-react";
+import { Calculator, ListOrdered, Wallet, Wand2, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { GeneratedContentPreview } from "./GeneratedContentPreview";
 import type { ServiceWithConfidence, PricingMode, PaymentInstallment, PricingTemplate } from "./types";
 import { formatCurrency, numberToWords } from "@/lib/number-to-words";
@@ -28,6 +29,8 @@ interface HonorariosGeneratorProps {
   pricingTemplates?: PricingTemplate[];
   selectedTemplateId?: string | null;
   onTemplateSelect?: (templateId: string | null) => void;
+  // Allow editing service fees
+  onUpdateServiceFee?: (serviceId: string, customFee: number | null, customMonthlyFee: number | null) => void;
 }
 
 export function HonorariosGenerator({
@@ -47,10 +50,12 @@ export function HonorariosGenerator({
   pricingTemplates = [],
   selectedTemplateId,
   onTemplateSelect,
+  onUpdateServiceFee,
 }: HonorariosGeneratorProps) {
   // Find selected template for exclusions text
   const selectedTemplate = pricingTemplates.find(t => t.id === selectedTemplateId);
   const [generatedText, setGeneratedText] = useState<string>("");
+  const [isServicesOpen, setIsServicesOpen] = useState(false);
   const [editedText, setEditedText] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -463,6 +468,91 @@ export function HonorariosGenerator({
                   return null;
                 })()}
               </div>
+            )}
+
+            {/* Services breakdown - collapsible in global mode */}
+            {selectedServices.length > 0 && (
+              <Collapsible open={isServicesOpen} onOpenChange={setIsServicesOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between">
+                    <span className="flex items-center gap-2">
+                      <ListOrdered className="h-4 w-4" />
+                      Ver desglose de servicios ({selectedServices.length})
+                    </span>
+                    {isServicesOpen ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3">
+                  <div className="bg-muted/30 rounded-lg p-3 space-y-3 border border-border">
+                    <p className="text-xs text-muted-foreground">
+                      Estos son los honorarios sugeridos por servicio. Puedes editarlos aunque uses el modo global.
+                    </p>
+                    {selectedServices.map((s) => {
+                      const feeType = s.service.fee_type || "one_time";
+                      const hasInitial = feeType === "one_time" || feeType === "both";
+                      const hasMonthly = feeType === "monthly" || feeType === "both";
+                      const initialFee = s.customFee ?? (s.service.suggested_fee ? Number(s.service.suggested_fee) : 0);
+                      const monthlyFee = s.customMonthlyFee ?? (s.service.suggested_monthly_fee ? Number(s.service.suggested_monthly_fee) : 0);
+
+                      return (
+                        <div key={s.service.id} className="p-3 bg-background rounded-lg border space-y-2">
+                          <p className="text-sm font-medium">{s.service.name}</p>
+                          <div className="grid grid-cols-2 gap-3">
+                            {hasInitial && (
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Pago inicial</Label>
+                                <Input
+                                  type="number"
+                                  value={initialFee || ""}
+                                  onChange={(e) => {
+                                    const newFee = parseFloat(e.target.value) || 0;
+                                    onUpdateServiceFee?.(s.service.id, newFee, s.customMonthlyFee ?? null);
+                                  }}
+                                  placeholder="0"
+                                  className="h-8 text-sm"
+                                />
+                              </div>
+                            )}
+                            {hasMonthly && (
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Iguala mensual</Label>
+                                <Input
+                                  type="number"
+                                  value={monthlyFee || ""}
+                                  onChange={(e) => {
+                                    const newFee = parseFloat(e.target.value) || 0;
+                                    onUpdateServiceFee?.(s.service.id, s.customFee ?? null, newFee);
+                                  }}
+                                  placeholder="0"
+                                  className="h-8 text-sm"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div className="pt-2 border-t">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Total calculado:</span>
+                        <span className="font-medium">
+                          {(() => {
+                            const { totalInitial, totalMonthly } = calculateTotals();
+                            const parts: string[] = [];
+                            if (totalInitial > 0) parts.push(`${formatCurrency(totalInitial)} inicial`);
+                            if (totalMonthly > 0) parts.push(`${formatCurrency(totalMonthly)}/mes`);
+                            return parts.join(" + ") || "$0";
+                          })()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             )}
           </div>
         )}
