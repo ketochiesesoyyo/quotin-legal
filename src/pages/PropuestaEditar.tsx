@@ -307,6 +307,31 @@ export default function PropuestaEditar() {
       if ((caseData as any).generated_block_contents) {
         setGeneratedBlockContents((caseData as any).generated_block_contents as Record<string, string>);
       }
+
+      // Unified document editing: hydrate draft content
+      if ((caseData as any).draft_content) {
+        setDraftContent(((caseData as any).draft_content as string) || "");
+      }
+
+      // Classic preview persistence: hydrate proposal_content (if present)
+      const proposalContent = (caseData as any).proposal_content as any;
+      if (proposalContent) {
+        if (typeof proposalContent.background === "string") {
+          setProposalBackground(proposalContent.background);
+        }
+        if (typeof proposalContent.servicesNarrative === "string") {
+          setServicesNarrative(proposalContent.servicesNarrative);
+        }
+        if (typeof proposalContent.honorariosNarrative === "string") {
+          setHonorariosNarrative(proposalContent.honorariosNarrative);
+        }
+        if (Array.isArray(proposalContent.textOverrides)) {
+          setTextOverrides(proposalContent.textOverrides);
+        }
+        if (proposalContent.generatedContent) {
+          setGeneratedContent(proposalContent.generatedContent);
+        }
+      }
     }
   }, [caseData]);
 
@@ -586,6 +611,8 @@ export default function PropuestaEditar() {
         custom_monthly_retainer: caseData.custom_monthly_retainer,
         custom_retainer_months: caseData.custom_retainer_months,
         pricing_mode: (caseData as any).pricing_mode,
+        draft_content: (caseData as any).draft_content,
+        proposal_content: (caseData as any).proposal_content,
         status: caseData.status,
       } : null;
 
@@ -599,6 +626,19 @@ export default function PropuestaEditar() {
             custom_retainer_months: customRetainerMonths,
             selected_pricing_id: selectedPricingId,
             pricing_mode: pricingMode,
+            // Persist latest content snapshots so subsequent loads show what the user last saw/edited
+            draft_content: draftContent || null,
+            generated_block_contents: generatedBlockContents as any,
+            proposal_content: {
+              background: proposalBackground,
+              servicesNarrative,
+              honorariosNarrative,
+              textOverrides,
+              generatedContent,
+              recipient: recipientData,
+              documentTemplateId: selectedDocumentTemplate?.id ?? null,
+              pricingMode,
+            } as any,
             status: "borrador",
           } as any)
           .eq("id", id!);
@@ -662,6 +702,7 @@ export default function PropuestaEditar() {
         },
         generatedContent,
         documentTemplateId: selectedDocumentTemplate?.id,
+        dynamicBlocksContent: generatedBlockContents,
         textOverrides: textOverrides.length > 0 ? textOverrides : undefined,
       };
 
@@ -1332,6 +1373,7 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
               <ProposalDocumentEditor
                 caseId={id!}
                 initialContent={draftContent || previewData.background || "<p>Comienza a escribir tu propuesta aquí...</p>"}
+                onContentChange={(content) => setDraftContent(content)}
                 clientContext={{
                   clientName: client?.group_name || "Cliente",
                   groupAlias: client?.alias || undefined,
