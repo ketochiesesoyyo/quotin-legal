@@ -18,7 +18,6 @@ import { Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const mainItems = [
-  { title: "Dashboard", url: "/", icon: Home },
   { title: "Clientes", url: "/clientes", icon: Users },
   { title: "Propuestas", url: "/propuestas", icon: FileText },
   { title: "Documentos", url: "/documentos", icon: FolderOpen },
