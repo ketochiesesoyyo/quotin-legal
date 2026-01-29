@@ -24,6 +24,8 @@ interface ProposalFullPreviewProps {
   onSaveDraft: () => void;
   onDownloadPDF: () => void;
   onSendToClient: () => void;
+  /** Optional HTML content to render directly (from document editor). If provided, ignores structured data. */
+  htmlContent?: string;
 }
 
 // Fixed transition texts
@@ -75,6 +77,7 @@ export function ProposalFullPreview({
   onSaveDraft,
   onDownloadPDF,
   onSendToClient,
+  htmlContent,
 }: ProposalFullPreviewProps) {
   const firmName = data.firmSettings?.name || "Nuestra Firma";
   const isComplete = progress >= 80;
@@ -156,6 +159,14 @@ export function ProposalFullPreview({
         <ScrollArea className="flex-1">
           <div className="max-w-3xl mx-auto p-8">
             <div ref={contentRef} className="bg-white dark:bg-card rounded-lg border shadow-sm p-8">
+              {/* If htmlContent is provided, render it directly (from document editor) */}
+              {htmlContent ? (
+                <div
+                  className="prose prose-sm max-w-none dark:prose-invert"
+                  dangerouslySetInnerHTML={{ __html: htmlContent }}
+                />
+              ) : (
+              <>
               {/* ============ MEMBRETE ============ */}
               <div className="text-center mb-8">
                 {data.firmSettings?.logo_url && (
@@ -413,6 +424,8 @@ export function ProposalFullPreview({
                 <h3 className="text-sm font-bold mb-3 text-primary">ACEPTACIÓN</h3>
                 <p className="text-sm leading-relaxed">{FIXED_TEXTS.aceptacion}</p>
               </section>
+              </>
+              )}
             </div>
           </div>
         </ScrollArea>

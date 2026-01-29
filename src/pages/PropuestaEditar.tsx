@@ -15,20 +15,18 @@ import { ValidatedDataSection } from "@/components/propuestas/ValidatedDataSecti
 import { PricingModeSelector } from "@/components/propuestas/PricingModeSelector";
 import { ServicesSection } from "@/components/propuestas/ServicesSection";
 import { PricingSection } from "@/components/propuestas/PricingSection";
-import { ProposalPreview } from "@/components/propuestas/ProposalPreview";
 import { ProposalFullPreview } from "@/components/propuestas/ProposalFullPreview";
 import { RecipientSection, type RecipientData } from "@/components/propuestas/RecipientSection";
 import { TemplateSelector } from "@/components/propuestas/TemplateSelector";
-import { CompiledDocumentPreview, buildCompilerContext } from "@/components/propuestas/CompiledDocumentPreview";
+import { buildCompilerContext } from "@/components/propuestas/CompiledDocumentPreview";
 import { ProposalDocumentEditor } from "@/components/propuestas/ProposalDocumentEditor";
 import { HonorariosGenerator } from "@/components/propuestas/HonorariosGenerator";
 import { DocumentSidebar } from "@/components/propuestas/DocumentSidebar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { generateFullDocumentHTML, parseDocumentHTML } from "@/lib/document-html-utils";
+import { generateFullDocumentHTML, parseDocumentHTML, insertIntoSection } from "@/lib/document-html-utils";
 import type { DocumentTemplate, TemplateSchema } from "@/components/plantillas/types";
 import type {
   Case,
@@ -100,9 +98,8 @@ export default function PropuestaEditar() {
   
   // Document template state (Sprint 2)
   const [selectedDocumentTemplate, setSelectedDocumentTemplate] = useState<DocumentTemplate | null>(null);
-  const [previewMode, setPreviewMode] = useState<'classic' | 'template' | 'document'>('classic');
 
-  // Sprint 4: Text overrides for inline preview editing
+  // Sprint 4: Text overrides for inline preview editing (kept for version tracking)
   const [textOverrides, setTextOverrides] = useState<TextOverride[]>([]);
 
   // Template-first architecture: pre-generated block contents
@@ -344,13 +341,6 @@ export default function PropuestaEditar() {
   const templateSnapshot = useMemo(() => {
     return (caseData as any)?.template_snapshot as TemplateSnapshot | null;
   }, [(caseData as any)?.template_snapshot]);
-
-  // Auto-switch to template mode when template is detected
-  useEffect(() => {
-    if (hasTemplate) {
-      setPreviewMode('template');
-    }
-  }, [hasTemplate]);
 
   // Initialize recipient from primary contact
   useEffect(() => {
@@ -765,39 +755,92 @@ export default function PropuestaEditar() {
     toast({ title: "Enviar", description: "Funcionalidad próximamente disponible" });
   };
 
-  // Handler for AI background analysis
+  // Handler for AI background analysis - calls real edge function
   const handleRequestAIAnalysis = async () => {
-    if (!userNotes.trim()) return;
+    if (!userNotes.trim()) {
+      toast({
+        title: "Notas requeridas",
+        description: "Por favor ingresa notas de la reunión antes de generar los antecedentes",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsAIProcessing(true);
     try {
-      // Simulate AI processing - in production this would call the edge function
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      
-      // Generate professional background text (this would come from AI in production)
+      // First, save the notes to the database so the edge function can read them
+      await supabase
+        .from("cases")
+        .update({ notes: userNotes })
+        .eq("id", id!);
+
+      // Call the analyze-proposal edge function
+      const { data, error } = await supabase.functions.invoke('analyze-proposal', {
+        body: { caseId: id },
+      });
+
+      if (error) {
+        console.error("AI Analysis error:", error);
+        throw new Error(error.message || "Error al analizar la propuesta");
+      }
+
+      // Extract the analysis results
+      const analysis = data?.analysis;
+      if (!analysis) {
+        throw new Error("No se recibió análisis del servidor");
+      }
+
+      // Build the background text from the analysis
       const clientName = client?.alias || client?.group_name || "la Empresa";
       const industry = client?.industry || "sus actividades comerciales";
       const entityCount = entities.length;
-      const employeeCount = client?.employee_count || 0;
-      
-      const generatedBackground = `Derivado de la información que amablemente nos ha sido proporcionada, sabemos que ${clientName} se dedica principalmente a ${industry}. Asimismo, sabemos que actualmente operan con ${entityCount} razón${entityCount !== 1 ? 'es' : ''} social${entityCount !== 1 ? 'es' : ''}, así como una plantilla laboral de aproximadamente ${employeeCount} colaboradores, sumado a los activos tangibles e intangibles propios de su operación.
 
-Finalmente, sabemos que gracias al crecimiento sostenido que han tenido, las Empresas requieren la implementación de servicios especializados que permitan optimizar su estructura corporativa y fiscal, blindar patrimonialmente a los socios, y aprovechar al máximo los activos con que cuenta la organización.
+      // Use the AI-generated summary and objective to create a rich background
+      let generatedBackground = "";
 
-Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en la medida de lo posible y con total apego a derecho, los recursos económicos, humanos y materiales con que cuentan, así como implementar una estructura corporativa sólida de cara a las proyecciones de crecimiento que se tienen.`;
-      
+      if (analysis.summary) {
+        generatedBackground = analysis.summary;
+      } else {
+        // Fallback: build from objective and other analysis data
+        generatedBackground = `Derivado de la información que amablemente nos ha sido proporcionada, sabemos que ${clientName} se dedica principalmente a ${industry}.`;
+
+        if (entityCount > 0) {
+          generatedBackground += ` Asimismo, sabemos que actualmente operan con ${entityCount} razón${entityCount !== 1 ? 'es' : ''} social${entityCount !== 1 ? 'es' : ''}.`;
+        }
+
+        if (analysis.objective) {
+          generatedBackground += `\n\n${analysis.objective}`;
+        }
+      }
+
+      // Add transition text if risks were identified
+      if (analysis.risks && analysis.risks.length > 0) {
+        generatedBackground += `\n\nPor lo anterior, será necesario analizar esquemas que permitan atender las necesidades identificadas, en total apego a derecho, implementando una estructura sólida de cara a los objetivos planteados.`;
+      }
+
       setAiSuggestion(generatedBackground);
-      
+      setEditedAiSuggestion(undefined); // Clear any previous edits
+
+      // Update local state with AI analysis for service suggestions
+      queryClient.invalidateQueries({ queryKey: ["case", id] });
+
+      toast({
+        title: "Análisis completado",
+        description: "Los antecedentes fueron generados por IA. Revisa y edita antes de insertar.",
+      });
+
       // Scroll to Antecedentes section with smooth animation
       setTimeout(() => {
-        antecedentesRef.current?.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'start' 
+        antecedentesRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
         });
       }, 100);
     } catch (error) {
+      console.error("Error in AI analysis:", error);
       toast({
         title: "Error",
-        description: "No se pudo generar los antecedentes",
+        description: error instanceof Error ? error.message : "No se pudo generar los antecedentes",
         variant: "destructive",
       });
     } finally {
@@ -1222,10 +1265,6 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                 selectedTemplateId={selectedDocumentTemplate?.id || null}
                 onSelectTemplate={(template) => {
                   setSelectedDocumentTemplate(template);
-                  // Switch to template preview mode when a template is selected
-                  if (template) {
-                    setPreviewMode('template');
-                  }
                 }}
               />
 
@@ -1245,9 +1284,13 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                     isAIProcessing={isAIProcessing}
                     onInsertInProposal={(text) => {
                       setProposalBackground(text);
+                      // Also update draftContent to keep editor in sync
+                      const currentHtml = draftContent || generateFullDocumentHTML(previewData);
+                      const updatedHtml = insertIntoSection(currentHtml, 'background', text);
+                      setDraftContent(updatedHtml);
                       toast({
                         title: "Antecedentes insertados",
-                        description: "El texto ha sido insertado en la propuesta",
+                        description: "El texto ha sido insertado en el documento",
                       });
                     }}
                     onSaveEdit={(text) => {
@@ -1274,9 +1317,13 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                     editedServicesContent={editedServicesContent}
                     onInsertServicesContent={(text) => {
                       setServicesNarrative(text);
+                      // Update draftContent to keep editor in sync
+                      const currentHtml = draftContent || generateFullDocumentHTML(previewData);
+                      const updatedHtml = insertIntoSection(currentHtml, 'services-narrative', text);
+                      setDraftContent(updatedHtml);
                       toast({
                         title: "Servicios insertados",
-                        description: "La sección I se actualizó con el texto de servicios",
+                        description: "La sección I se actualizó en el documento",
                       });
                     }}
                     onSaveServicesContentEdit={(text) => {
@@ -1317,14 +1364,14 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
                 onInsertHonorarios={(text) => {
                   // Set the honorarios narrative for the preview
                   setHonorariosNarrative(text);
+                  // Update draftContent to keep editor in sync
+                  const currentHtml = draftContent || generateFullDocumentHTML(previewData);
+                  const updatedHtml = insertIntoSection(currentHtml, 'honorarios-narrative', text);
+                  setDraftContent(updatedHtml);
                   toast({
                     title: "Honorarios insertados",
-                    description: "La sección II se actualizó con el texto de honorarios",
+                    description: "La sección II se actualizó en el documento",
                   });
-                  // Also append to draft content if in document mode
-                  if (draftContent) {
-                    setDraftContent(prev => prev + "\n\n" + text);
-                  }
                 }}
               />
 
@@ -1355,100 +1402,53 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
           </ScrollArea>
         </div>
 
-        {/* Right Panel - Preview with Tabs */}
+        {/* Right Panel - Document Editor */}
         <div className="w-1/2 p-6 flex flex-col min-h-0">
-          <Tabs value={previewMode} onValueChange={(v) => setPreviewMode(v as 'classic' | 'template' | 'document')} className="flex-1 flex flex-col min-h-0">
-            <TabsList className="mb-4 shrink-0">
-              <TabsTrigger value="classic">Vista Clásica</TabsTrigger>
-              <TabsTrigger value="document">Editor de Documento</TabsTrigger>
-              <TabsTrigger value="template" disabled={!hasTemplate && !selectedDocumentTemplate}>
-                Plantilla Compilada
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="classic" className="flex-1 m-0 min-h-0 overflow-hidden">
-              <ProposalPreview
-                data={previewData}
-                isGenerating={isGenerating}
-                onGenerate={handleGenerate}
-                textOverrides={textOverrides}
-                onTextOverride={handleTextOverride}
-                onRestoreOriginal={handleRestoreOriginal}
-                onAIRewrite={handleAIRewrite}
-                clientContext={{
-                  clientName: client?.group_name || "Cliente",
-                  industry: client?.industry || null,
-                }}
-              />
-            </TabsContent>
-            <TabsContent value="document" className="flex-1 m-0 min-h-0 overflow-hidden">
-              <ProposalDocumentEditor
-                caseId={id!}
-                initialContent={draftContent || generateFullDocumentHTML(previewData)}
-                onContentChange={(content) => {
-                  setDraftContent(content);
-                  // Parse HTML and sync back to preview states
-                  const parsed = parseDocumentHTML(content);
-                  if (parsed.background !== undefined) {
-                    setProposalBackground(parsed.background);
-                  }
-                  if (parsed.servicesNarrative !== undefined) {
-                    setServicesNarrative(parsed.servicesNarrative);
-                  }
-                  if (parsed.honorariosNarrative !== undefined) {
-                    setHonorariosNarrative(parsed.honorariosNarrative);
-                  }
-                }}
-                clientContext={{
-                  clientName: client?.group_name || "Cliente",
-                  groupAlias: client?.alias || undefined,
-                  industry: client?.industry,
-                  entities: entities.map(e => ({ legalName: e.legal_name, rfc: e.rfc })),
-                  primaryContact: recipientData.fullName !== "[Nombre del Contacto]" ? {
-                    fullName: recipientData.fullName,
-                    position: recipientData.position,
-                    salutationPrefix: recipientData.salutationPrefix,
-                  } : undefined,
-                }}
-                services={services.filter(s => s.isSelected).map(s => ({
-                  id: s.service.id,
-                  name: s.service.name,
-                  description: s.service.description,
-                  customText: s.customText,
-                  fee: s.customFee,
-                  monthlyFee: s.customMonthlyFee,
-                }))}
-                onSave={async (content) => {
-                  setDraftContent(content);
-                  await supabase.from("cases").update({ draft_content: content } as any).eq("id", id!);
-                }}
-                isSaving={saveMutation.isPending}
-              />
-            </TabsContent>
-            <TabsContent value="template" className="flex-1 m-0 min-h-0 overflow-hidden">
-              {hasTemplate && templateSnapshot ? (
-                <div className="h-full flex flex-col min-h-0 border rounded-lg overflow-hidden bg-card">
-                  <CompiledDocumentPreview
-                    templateSnapshot={templateSnapshot}
-                    context={compilerContext}
-                    blockContents={generatedBlockContents}
-                    showDebug={true}
-                  />
-                </div>
-              ) : selectedDocumentTemplate ? (
-                <div className="h-full flex flex-col min-h-0 border rounded-lg overflow-hidden bg-card">
-                  <CompiledDocumentPreview
-                    template={selectedDocumentTemplate}
-                    context={compilerContext}
-                    showDebug={true}
-                  />
-                </div>
-              ) : (
-                <div className="h-full flex items-center justify-center text-muted-foreground">
-                  Selecciona una plantilla para ver la vista previa compilada
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
+          <ProposalDocumentEditor
+            caseId={id!}
+            initialContent={draftContent || generateFullDocumentHTML(previewData)}
+            onContentChange={(content) => {
+              setDraftContent(content);
+              // Parse HTML and sync back to preview states for version tracking
+              const parsed = parseDocumentHTML(content);
+              if (parsed.background !== undefined) {
+                setProposalBackground(parsed.background);
+              }
+              if (parsed.servicesNarrative !== undefined) {
+                setServicesNarrative(parsed.servicesNarrative);
+              }
+              if (parsed.honorariosNarrative !== undefined) {
+                setHonorariosNarrative(parsed.honorariosNarrative);
+              }
+            }}
+            clientContext={{
+              clientName: client?.group_name || "Cliente",
+              groupAlias: client?.alias || undefined,
+              industry: client?.industry,
+              entities: entities.map(e => ({ legalName: e.legal_name, rfc: e.rfc })),
+              primaryContact: recipientData.fullName !== "[Nombre del Contacto]" ? {
+                fullName: recipientData.fullName,
+                position: recipientData.position,
+                salutationPrefix: recipientData.salutationPrefix,
+              } : undefined,
+            }}
+            services={services.filter(s => s.isSelected).map(s => ({
+              id: s.service.id,
+              name: s.service.name,
+              description: s.service.description,
+              customText: s.customText,
+              fee: s.customFee,
+              monthlyFee: s.customMonthlyFee,
+            }))}
+            onSave={async (content) => {
+              // Update local state first
+              setDraftContent(content);
+              // Use the main save mutation to persist everything consistently
+              await saveMutation.mutateAsync();
+            }}
+            onExportPDF={() => setShowFullPreview(true)}
+            isSaving={saveMutation.isPending}
+          />
         </div>
       </div>
 
@@ -1462,6 +1462,7 @@ Por lo anterior, será necesario analizar esquemas que permitan eficientizar, en
         onSaveDraft={handleSaveDraft}
         onDownloadPDF={handleDownload}
         onSendToClient={handleSend}
+        htmlContent={draftContent}
       />
     </div>
   );

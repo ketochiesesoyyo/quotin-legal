@@ -70,6 +70,12 @@ export function HonorariosGenerator({
     }
   };
 
+  // IVA rate in Mexico (16%)
+  const IVA_RATE = 0.16;
+
+  // Calculate IVA for an amount
+  const calculateIVA = (amount: number) => Math.round(amount * IVA_RATE * 100) / 100;
+
   // Calculate totals from selected services
   const calculateTotals = () => {
     let totalInitial = 0;
@@ -87,41 +93,58 @@ export function HonorariosGenerator({
       }
     });
 
-    return { totalInitial, totalMonthly };
+    const ivaInitial = calculateIVA(totalInitial);
+    const ivaMonthly = calculateIVA(totalMonthly);
+
+    return {
+      totalInitial,
+      totalMonthly,
+      ivaInitial,
+      ivaMonthly,
+      totalInitialWithIVA: totalInitial + ivaInitial,
+      totalMonthlyWithIVA: totalMonthly + ivaMonthly,
+    };
   };
 
   const generatePerServiceText = (): string => {
     const lines: string[] = ["II. PROPUESTA DE HONORARIOS.", ""];
-    
+
     selectedServices.forEach((s, index) => {
       const letter = String.fromCharCode(97 + index); // a, b, c...
       const feeType = s.service.fee_type || "one_time";
       const hasInitial = feeType === "one_time" || feeType === "both";
       const hasMonthly = feeType === "monthly" || feeType === "both";
-      
+
       const initialFee = s.customFee ?? (s.service.suggested_fee ? Number(s.service.suggested_fee) : 0);
       const monthlyFee = s.customMonthlyFee ?? (s.service.suggested_monthly_fee ? Number(s.service.suggested_monthly_fee) : 0);
+      const ivaInitial = calculateIVA(initialFee);
+      const ivaMonthly = calculateIVA(monthlyFee);
 
       lines.push(`${letter}) ${s.service.name}`);
-      
+
       if (hasInitial && initialFee > 0) {
-        lines.push(`   • Pago inicial: ${formatCurrency(initialFee)} + IVA`);
+        lines.push(`   • Pago inicial: ${formatCurrency(initialFee)} + IVA (${formatCurrency(ivaInitial)}) = ${formatCurrency(initialFee + ivaInitial)}`);
       }
       if (hasMonthly && monthlyFee > 0) {
-        lines.push(`   • Iguala mensual: ${formatCurrency(monthlyFee)} + IVA`);
+        lines.push(`   • Iguala mensual: ${formatCurrency(monthlyFee)} + IVA (${formatCurrency(ivaMonthly)}) = ${formatCurrency(monthlyFee + ivaMonthly)}`);
       }
       lines.push("");
     });
 
-    // Add totals
-    const { totalInitial, totalMonthly } = calculateTotals();
-    lines.push("─".repeat(30));
+    // Add totals with IVA breakdown
+    const { totalInitial, totalMonthly, ivaInitial, ivaMonthly, totalInitialWithIVA, totalMonthlyWithIVA } = calculateTotals();
+    lines.push("─".repeat(40));
     lines.push("TOTAL:");
     if (totalInitial > 0) {
-      lines.push(`• Pago inicial: ${formatCurrency(totalInitial)} + IVA`);
+      lines.push(`• Subtotal pago inicial: ${formatCurrency(totalInitial)}`);
+      lines.push(`• IVA (16%): ${formatCurrency(ivaInitial)}`);
+      lines.push(`• Total con IVA: ${formatCurrency(totalInitialWithIVA)}`);
     }
     if (totalMonthly > 0) {
-      lines.push(`• Iguala mensual: ${formatCurrency(totalMonthly)} + IVA`);
+      if (totalInitial > 0) lines.push("");
+      lines.push(`• Subtotal iguala mensual: ${formatCurrency(totalMonthly)}`);
+      lines.push(`• IVA (16%): ${formatCurrency(ivaMonthly)}`);
+      lines.push(`• Total con IVA: ${formatCurrency(totalMonthlyWithIVA)}`);
     }
 
     return lines.join("\n");
@@ -140,14 +163,21 @@ export function HonorariosGenerator({
 
     lines.push("");
     lines.push("Por tal motivo, se propone el siguiente esquema de honorarios:");
+    lines.push("");
 
-    const { totalInitial, totalMonthly } = calculateTotals();
-    
+    const { totalInitial, totalMonthly, ivaInitial, ivaMonthly, totalInitialWithIVA, totalMonthlyWithIVA } = calculateTotals();
+
     if (totalInitial > 0) {
-      lines.push(`• Pago inicial: ${formatCurrency(totalInitial)} + IVA`);
+      lines.push(`• Pago inicial:`);
+      lines.push(`  - Subtotal: ${formatCurrency(totalInitial)}`);
+      lines.push(`  - IVA (16%): ${formatCurrency(ivaInitial)}`);
+      lines.push(`  - Total: ${formatCurrency(totalInitialWithIVA)}`);
     }
     if (totalMonthly > 0) {
-      lines.push(`• Iguala mensual: ${formatCurrency(totalMonthly)} + IVA por un plazo de ${retainerMonths} meses`);
+      lines.push(`• Iguala mensual por ${retainerMonths} meses:`);
+      lines.push(`  - Subtotal: ${formatCurrency(totalMonthly)}`);
+      lines.push(`  - IVA (16%): ${formatCurrency(ivaMonthly)}`);
+      lines.push(`  - Total: ${formatCurrency(totalMonthlyWithIVA)}`);
     }
 
     return lines.join("\n");
@@ -157,6 +187,10 @@ export function HonorariosGenerator({
     // Use global values (not calculated from services)
     const initial = initialPayment;
     const monthly = monthlyRetainer;
+    const ivaInitial = calculateIVA(initial);
+    const ivaMonthly = calculateIVA(monthly);
+    const totalInitialWithIVA = initial + ivaInitial;
+    const totalMonthlyWithIVA = monthly + ivaMonthly;
 
     const lines: string[] = [
       "II. PROPUESTA DE HONORARIOS.",
@@ -168,9 +202,9 @@ export function HonorariosGenerator({
     ];
 
     if (initial > 0) {
-      lines.push(`a) Un pago inicial en cantidad de ${formatCurrency(initial)} (${numberToWords(initial)}) más IVA correspondiente al estudio, análisis y propuesta de ${clientObjective}.`);
+      lines.push(`a) Un pago inicial en cantidad de ${formatCurrency(initial)} (${numberToWords(initial)} 00/100 M.N.) más IVA, lo que equivale a un total de ${formatCurrency(totalInitialWithIVA)} (${numberToWords(totalInitialWithIVA)} 00/100 M.N.) correspondiente al estudio, análisis y propuesta de ${clientObjective}.`);
       lines.push("");
-      
+
       // Add installment details if available
       if (paymentInstallments.length > 0) {
         const installmentText = paymentInstallments
@@ -183,7 +217,7 @@ export function HonorariosGenerator({
 
     if (monthly > 0) {
       const letterPrefix = initial > 0 ? "b)" : "a)";
-      lines.push(`${letterPrefix} Una iguala mensual en cantidad de ${formatCurrency(monthly)} (${numberToWords(monthly)}) más IVA por un plazo de ${retainerMonths} meses a fin de realizar las labores de ejecución, implementación y acompañamiento de la propuesta.`);
+      lines.push(`${letterPrefix} Una iguala mensual en cantidad de ${formatCurrency(monthly)} (${numberToWords(monthly)} 00/100 M.N.) más IVA, lo que equivale a ${formatCurrency(totalMonthlyWithIVA)} (${numberToWords(totalMonthlyWithIVA)} 00/100 M.N.) por un plazo de ${retainerMonths} meses a fin de realizar las labores de ejecución, implementación y acompañamiento de la propuesta.`);
     }
 
     // Add exclusions text from template if available

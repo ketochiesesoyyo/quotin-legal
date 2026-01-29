@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -208,17 +207,16 @@ export default function Servicios() {
 
   // Selection handlers
   const handleSelectAll = (checked: boolean) => {
-    if (checked && filteredData) {
-      // Filter out any undefined or invalid IDs
-      const validIds = filteredData.map((s) => s.id).filter((id): id is string => typeof id === 'string' && !!id);
-      setSelectedIds(new Set(validIds));
+    if (checked && filteredData && filteredData.length > 0) {
+      const allIds = filteredData.map((s) => s.id).filter(Boolean);
+      setSelectedIds(new Set(allIds));
     } else {
       setSelectedIds(new Set());
     }
   };
 
   const handleSelectOne = (id: string, checked: boolean) => {
-    if (!id || id === 'undefined') return; // Guard against invalid IDs
+    if (!id) return;
     const newSet = new Set(selectedIds);
     if (checked) {
       newSet.add(id);
@@ -267,8 +265,8 @@ export default function Servicios() {
     }
   };
 
-  const activeServices = services?.filter((s) => s.is_active) || [];
-  const inactiveServices = services?.filter((s) => !s.is_active) || [];
+  const activeServices = services?.filter((s) => s.is_active ?? true) || [];
+  const inactiveServices = services?.filter((s) => !(s.is_active ?? true)) || [];
 
   return (
     <div className="space-y-6">
@@ -486,12 +484,15 @@ export default function Servicios() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[40px]">
-                    <Checkbox
+                    <input
+                      type="checkbox"
                       checked={isAllSelected}
-                      onCheckedChange={handleSelectAll}
+                      ref={(el) => {
+                        if (el) el.indeterminate = isSomeSelected && !isAllSelected;
+                      }}
+                      onChange={(e) => handleSelectAll(e.target.checked)}
                       aria-label="Seleccionar todos"
-                      className={isSomeSelected ? "data-[state=checked]:bg-primary/50" : ""}
-                      {...(isSomeSelected ? { "data-state": "checked" } : {})}
+                      className="h-4 w-4 cursor-pointer"
                     />
                   </TableHead>
                   <SortableTableHead sortKey="name" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Nombre</SortableTableHead>
@@ -529,10 +530,12 @@ export default function Servicios() {
                   return (
                     <TableRow key={service.id} className={selectedIds.has(service.id) ? "bg-muted/50" : ""}>
                       <TableCell>
-                        <Checkbox
+                        <input
+                          type="checkbox"
                           checked={selectedIds.has(service.id)}
-                          onCheckedChange={(checked) => handleSelectOne(service.id, checked as boolean)}
+                          onChange={(e) => handleSelectOne(service.id, e.target.checked)}
                           aria-label={`Seleccionar ${service.name}`}
+                          className="h-4 w-4 cursor-pointer"
                         />
                       </TableCell>
                       <TableCell className="font-medium">{service.name}</TableCell>
@@ -548,8 +551,8 @@ export default function Servicios() {
                         {getPricingDisplay()}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={service.is_active ? "default" : "secondary"}>
-                          {service.is_active ? "Activo" : "Inactivo"}
+                        <Badge variant={(service.is_active ?? true) ? "default" : "secondary"}>
+                          {(service.is_active ?? true) ? "Activo" : "Inactivo"}
                         </Badge>
                       </TableCell>
                       <TableCell>

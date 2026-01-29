@@ -225,3 +225,62 @@ export function parseDocumentHTML(html: string): ParsedDocumentSections {
 
   return result;
 }
+
+/**
+ * Inserts or replaces content in a specific section of the document HTML
+ * Used for inserting AI-generated content into the document editor
+ *
+ * @param html - The current document HTML
+ * @param sectionId - The section identifier (background, services-narrative, honorarios-narrative)
+ * @param content - The new content to insert
+ * @returns Updated HTML with the content inserted
+ */
+export function insertIntoSection(html: string, sectionId: string, content: string): string {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  // Try to find the section by data-section attribute
+  let sectionEl = doc.querySelector(`[data-section="${sectionId}"]`);
+
+  if (sectionEl) {
+    // Section exists, replace its content
+    sectionEl.innerHTML = content;
+  } else {
+    // Section doesn't exist, try to find by header and insert after it
+    const h2s = doc.querySelectorAll('h2');
+    let targetH2: Element | null = null;
+
+    h2s.forEach(h2 => {
+      const text = h2.textContent?.toLowerCase() || '';
+      if (sectionId === 'background' && text.includes('antecedentes')) {
+        targetH2 = h2;
+      } else if (sectionId === 'services-narrative' && text.includes('antecedentes')) {
+        targetH2 = h2;
+      } else if (sectionId === 'honorarios-narrative' && text.includes('honorarios')) {
+        targetH2 = h2;
+      }
+    });
+
+    if (targetH2) {
+      // Create new section element and insert after the H2
+      const newSection = doc.createElement('div');
+      newSection.setAttribute('data-section', sectionId);
+      newSection.style.marginBottom = '16px';
+      if (sectionId !== 'background') {
+        newSection.style.whiteSpace = 'pre-wrap';
+      }
+      newSection.innerHTML = content;
+
+      // Find the next sibling to insert before, or append after H2
+      const nextSibling = targetH2.nextElementSibling;
+      if (nextSibling) {
+        targetH2.parentNode?.insertBefore(newSection, nextSibling);
+      } else {
+        targetH2.parentNode?.appendChild(newSection);
+      }
+    }
+  }
+
+  // Return the updated HTML
+  return doc.body.innerHTML;
+}
