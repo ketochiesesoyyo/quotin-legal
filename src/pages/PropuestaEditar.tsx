@@ -1263,71 +1263,183 @@ export default function PropuestaEditar() {
               {/* ========== SELECCIÓN DE PLANTILLA ========== */}
               <TemplateSelector
                 selectedTemplateId={selectedDocumentTemplate?.id || null}
-                onSelectTemplate={(template) => {
-                  // Helper to apply template
-                  const applyTemplate = () => {
+                onSelectTemplate={async (template) => {
+                  // Helper to apply template and save snapshot
+                  const applyTemplate = async () => {
                     setSelectedDocumentTemplate(template);
 
-                    // Load template content into the editor
-                    if (template) {
-                      // Get HTML content from template
-                      const templateContent = template.content as { html?: string } | null;
-                      const canonicalContent = template.canonical_content as { html?: string; text?: string } | null;
-                      const htmlContent = templateContent?.html || canonicalContent?.html || "";
-
-                      if (htmlContent) {
-                        // Replace common variables with actual data
-                        let processedHtml = htmlContent;
-
-                        // Client variables
-                        processedHtml = processedHtml.replace(/\{\{client\.name\}\}/gi, client?.group_name || "[Nombre del Cliente]");
-                        processedHtml = processedHtml.replace(/\{\{client\.group_name\}\}/gi, client?.group_name || "[Nombre del Cliente]");
-                        processedHtml = processedHtml.replace(/\{\{client\.alias\}\}/gi, client?.alias || client?.group_name || "[Alias]");
-                        processedHtml = processedHtml.replace(/\{\{client\.industry\}\}/gi, client?.industry || "[Industria]");
-
-                        // Recipient variables
-                        processedHtml = processedHtml.replace(/\{\{recipient\.name\}\}/gi, recipientData.fullName);
-                        processedHtml = processedHtml.replace(/\{\{recipient\.position\}\}/gi, recipientData.position || "");
-                        processedHtml = processedHtml.replace(/\{\{recipient\.salutation\}\}/gi, `${recipientData.salutationPrefix} ${recipientData.fullName}`);
-
-                        // Date variables
-                        const formattedDate = format(new Date(), "d 'de' MMMM 'de' yyyy", { locale: es });
-                        processedHtml = processedHtml.replace(/\{\{date\}\}/gi, formattedDate);
-                        processedHtml = processedHtml.replace(/\{\{proposal\.date\}\}/gi, formattedDate);
-
-                        // Entity count
-                        processedHtml = processedHtml.replace(/\{\{entity_count\}\}/gi, String(entities.length));
-
-                        // Set the processed content to the editor
-                        setDraftContent(processedHtml);
-
-                        toast({
-                          title: "Plantilla cargada",
-                          description: `Se ha aplicado la plantilla "${template.name}" al documento`,
-                        });
-                      } else {
-                        toast({
-                          title: "Plantilla sin contenido",
-                          description: "Esta plantilla no tiene contenido HTML definido",
-                          variant: "destructive",
-                        });
-                      }
-                    } else {
-                      // Clearing template selection
-                      setSelectedDocumentTemplate(null);
+                    if (!template) {
+                      // Clearing template - remove snapshot from case
+                      await supabase
+                        .from("cases")
+                        .update({
+                          selected_template_id: null,
+                          template_snapshot: null,
+                        } as any)
+                        .eq("id", id!);
+                      return;
                     }
+
+                    // Get AI analysis data for variable replacement
+                    const aiAnalysis = caseData?.ai_analysis as AIAnalysis | null;
+
+                    // Create template snapshot for the case
+                    const templateSnapshot = {
+                      template_id: template.id,
+                      template_name: template.name,
+                      template_version: template.version,
+                      schema_json: template.schema_json,
+                      ai_instructions: template.ai_instructions,
+                      snapshot_at: new Date().toISOString(),
+                    };
+
+                    // Save template snapshot to database
+                    const { error: snapshotError } = await supabase
+                      .from("cases")
+                      .update({
+                        selected_template_id: template.id,
+                        template_snapshot: templateSnapshot,
+                      } as any)
+                      .eq("id", id!);
+
+                    if (snapshotError) {
+                      console.error("Error saving template snapshot:", snapshotError);
+                      toast({
+                        title: "Error",
+                        description: "No se pudo guardar la plantilla seleccionada",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+
+                    // Get HTML content from template
+                    const templateContent = template.content as { html?: string } | null;
+                    const canonicalContent = template.canonical_content as { html?: string; text?: string } | null;
+                    const htmlContent = templateContent?.html || canonicalContent?.html || "";
+
+                    if (!htmlContent) {
+                      toast({
+                        title: "Plantilla sin contenido",
+                        description: "Esta plantilla no tiene contenido HTML definido",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+
+                    // Process template with all available data
+                    let processedHtml = htmlContent;
+                    const formattedDate = format(new Date(), "d 'de' MMMM 'de' yyyy", { locale: es });
+
+                    // === CLIENT VARIABLES ===
+                    processedHtml = processedHtml.replace(/\{\{client\.name\}\}/gi, client?.group_name || "[Nombre del Cliente]");
+                    processedHtml = processedHtml.replace(/\{\{client\.group_name\}\}/gi, client?.group_name || "[Nombre del Cliente]");
+                    processedHtml = processedHtml.replace(/\{\{client\.alias\}\}/gi, client?.alias || client?.group_name || "[Alias]");
+                    processedHtml = processedHtml.replace(/\{\{client\.industry\}\}/gi, client?.industry || "[Industria]");
+                    processedHtml = processedHtml.replace(/\{\{client\.employee_count\}\}/gi, String(client?.employee_count || 0));
+                    processedHtml = processedHtml.replace(/\{\{client\.annual_revenue\}\}/gi, client?.annual_revenue || "[Ingresos]");
+
+                    // === RECIPIENT VARIABLES ===
+                    processedHtml = processedHtml.replace(/\{\{recipient\.name\}\}/gi, recipientData.fullName);
+                    processedHtml = processedHtml.replace(/\{\{recipient\.position\}\}/gi, recipientData.position || "");
+                    processedHtml = processedHtml.replace(/\{\{recipient\.salutation\}\}/gi, `${recipientData.salutationPrefix} ${recipientData.fullName}`);
+
+                    // === DATE VARIABLES ===
+                    processedHtml = processedHtml.replace(/\{\{date\}\}/gi, formattedDate);
+                    processedHtml = processedHtml.replace(/\{\{proposal\.date\}\}/gi, formattedDate);
+
+                    // === ENTITY VARIABLES ===
+                    processedHtml = processedHtml.replace(/\{\{entity_count\}\}/gi, String(entities.length));
+                    if (entities.length > 0) {
+                      const entityList = entities.map(e => `<li>${e.legal_name}${e.rfc ? ` (RFC: ${e.rfc})` : ''}</li>`).join('');
+                      processedHtml = processedHtml.replace(/\{\{entities\.list\}\}/gi, `<ul>${entityList}</ul>`);
+                      processedHtml = processedHtml.replace(/\{\{entities\.names\}\}/gi, entities.map(e => e.legal_name).join(', '));
+                    }
+
+                    // === AI ANALYSIS VARIABLES (from meeting notes) ===
+                    if (aiAnalysis) {
+                      // Background/Summary from AI
+                      if (aiAnalysis.summary) {
+                        processedHtml = processedHtml.replace(/\{\{background\}\}/gi, aiAnalysis.summary);
+                        processedHtml = processedHtml.replace(/\{\{ai\.summary\}\}/gi, aiAnalysis.summary);
+                        processedHtml = processedHtml.replace(/\{\{antecedentes\}\}/gi, aiAnalysis.summary);
+                      }
+
+                      // Objective from AI
+                      if (aiAnalysis.objective) {
+                        processedHtml = processedHtml.replace(/\{\{objective\}\}/gi, aiAnalysis.objective);
+                        processedHtml = processedHtml.replace(/\{\{ai\.objective\}\}/gi, aiAnalysis.objective);
+                        processedHtml = processedHtml.replace(/\{\{objetivo\}\}/gi, aiAnalysis.objective);
+                      }
+
+                      // Risks from AI
+                      if (aiAnalysis.risks && aiAnalysis.risks.length > 0) {
+                        const risksList = aiAnalysis.risks.map(r => `<li>${r}</li>`).join('');
+                        processedHtml = processedHtml.replace(/\{\{risks\}\}/gi, `<ul>${risksList}</ul>`);
+                        processedHtml = processedHtml.replace(/\{\{ai\.risks\}\}/gi, `<ul>${risksList}</ul>`);
+                        processedHtml = processedHtml.replace(/\{\{riesgos\}\}/gi, `<ul>${risksList}</ul>`);
+                      }
+                    }
+
+                    // === SERVICES VARIABLES ===
+                    const selectedServices = services.filter(s => s.isSelected);
+                    if (selectedServices.length > 0) {
+                      const servicesList = selectedServices.map(s =>
+                        `<li><strong>${s.service.name}</strong>${s.service.description ? `: ${s.service.description}` : ''}</li>`
+                      ).join('');
+                      processedHtml = processedHtml.replace(/\{\{services\.list\}\}/gi, `<ul>${servicesList}</ul>`);
+                      processedHtml = processedHtml.replace(/\{\{services\.names\}\}/gi, selectedServices.map(s => s.service.name).join(', '));
+                      processedHtml = processedHtml.replace(/\{\{services\.count\}\}/gi, String(selectedServices.length));
+                    }
+
+                    // === PRICING VARIABLES ===
+                    const formatCurrency = (amount: number) =>
+                      new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(amount);
+
+                    processedHtml = processedHtml.replace(/\{\{pricing\.initial\}\}/gi, formatCurrency(customInitialPayment));
+                    processedHtml = processedHtml.replace(/\{\{pricing\.monthly\}\}/gi, formatCurrency(customMonthlyRetainer));
+                    processedHtml = processedHtml.replace(/\{\{pricing\.total\}\}/gi, formatCurrency(customInitialPayment + customMonthlyRetainer * customRetainerMonths));
+
+                    // === FIRM VARIABLES ===
+                    if (firmSettings) {
+                      processedHtml = processedHtml.replace(/\{\{firm\.name\}\}/gi, firmSettings.name || "[Nombre del Despacho]");
+                      processedHtml = processedHtml.replace(/\{\{firm\.address\}\}/gi, firmSettings.address || "");
+                      processedHtml = processedHtml.replace(/\{\{firm\.phone\}\}/gi, firmSettings.phone || "");
+                      processedHtml = processedHtml.replace(/\{\{firm\.email\}\}/gi, firmSettings.email || "");
+                      processedHtml = processedHtml.replace(/\{\{firm\.website\}\}/gi, firmSettings.website || "");
+                      if (firmSettings.guarantees_text) {
+                        processedHtml = processedHtml.replace(/\{\{firm\.guarantees\}\}/gi, firmSettings.guarantees_text);
+                      }
+                      if (firmSettings.closing_text) {
+                        processedHtml = processedHtml.replace(/\{\{firm\.closing\}\}/gi, firmSettings.closing_text);
+                      }
+                    }
+
+                    // Set the processed content to the editor
+                    setDraftContent(processedHtml);
+
+                    // Also sync with proposal background if AI summary exists
+                    if (aiAnalysis?.summary && !proposalBackground) {
+                      setProposalBackground(aiAnalysis.summary);
+                    }
+
+                    toast({
+                      title: "Plantilla cargada",
+                      description: `Se ha aplicado "${template.name}" con datos del cliente y análisis de IA`,
+                    });
+
+                    // Invalidate case query to reflect template snapshot
+                    queryClient.invalidateQueries({ queryKey: ["case", id] });
                   };
 
                   // Check if editor has custom content that would be overwritten
                   const hasExistingContent = draftContent && draftContent.trim().length > 100;
 
                   if (hasExistingContent && template) {
-                    // Show confirmation before overwriting
                     if (window.confirm("¿Deseas reemplazar el contenido actual del documento con la plantilla seleccionada?\n\nEsto sobrescribirá todo el texto que hayas editado.")) {
-                      applyTemplate();
+                      await applyTemplate();
                     }
                   } else {
-                    applyTemplate();
+                    await applyTemplate();
                   }
                 }}
               />

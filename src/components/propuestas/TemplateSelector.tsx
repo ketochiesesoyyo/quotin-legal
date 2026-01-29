@@ -22,7 +22,7 @@ import type { DocumentTemplate, TemplateSchema } from "@/components/plantillas/t
 
 interface TemplateSelectorProps {
   selectedTemplateId: string | null;
-  onSelectTemplate: (template: DocumentTemplate | null) => void;
+  onSelectTemplate: (template: DocumentTemplate | null) => void | Promise<void>;
   onPreviewTemplate?: (template: DocumentTemplate) => void;
 }
 
@@ -31,6 +31,8 @@ export function TemplateSelector({
   onSelectTemplate,
   onPreviewTemplate,
 }: TemplateSelectorProps) {
+  const [isApplying, setIsApplying] = useState(false);
+
   // Fetch active document templates
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["active_document_templates"],
@@ -49,14 +51,19 @@ export function TemplateSelector({
 
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
 
-  const handleSelect = (templateId: string) => {
-    if (templateId === "none") {
-      onSelectTemplate(null);
-    } else {
-      const template = templates.find((t) => t.id === templateId);
-      if (template) {
-        onSelectTemplate(template);
+  const handleSelect = async (templateId: string) => {
+    setIsApplying(true);
+    try {
+      if (templateId === "none") {
+        await onSelectTemplate(null);
+      } else {
+        const template = templates.find((t) => t.id === templateId);
+        if (template) {
+          await onSelectTemplate(template);
+        }
       }
+    } finally {
+      setIsApplying(false);
     }
   };
 
@@ -107,9 +114,17 @@ export function TemplateSelector({
         <Select
           value={selectedTemplateId || "none"}
           onValueChange={handleSelect}
+          disabled={isApplying}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Seleccionar plantilla..." />
+            {isApplying ? (
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Aplicando plantilla...</span>
+              </div>
+            ) : (
+              <SelectValue placeholder="Seleccionar plantilla..." />
+            )}
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="none">
