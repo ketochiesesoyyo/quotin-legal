@@ -1264,7 +1264,71 @@ export default function PropuestaEditar() {
               <TemplateSelector
                 selectedTemplateId={selectedDocumentTemplate?.id || null}
                 onSelectTemplate={(template) => {
-                  setSelectedDocumentTemplate(template);
+                  // Helper to apply template
+                  const applyTemplate = () => {
+                    setSelectedDocumentTemplate(template);
+
+                    // Load template content into the editor
+                    if (template) {
+                      // Get HTML content from template
+                      const templateContent = template.content as { html?: string } | null;
+                      const canonicalContent = template.canonical_content as { html?: string; text?: string } | null;
+                      const htmlContent = templateContent?.html || canonicalContent?.html || "";
+
+                      if (htmlContent) {
+                        // Replace common variables with actual data
+                        let processedHtml = htmlContent;
+
+                        // Client variables
+                        processedHtml = processedHtml.replace(/\{\{client\.name\}\}/gi, client?.group_name || "[Nombre del Cliente]");
+                        processedHtml = processedHtml.replace(/\{\{client\.group_name\}\}/gi, client?.group_name || "[Nombre del Cliente]");
+                        processedHtml = processedHtml.replace(/\{\{client\.alias\}\}/gi, client?.alias || client?.group_name || "[Alias]");
+                        processedHtml = processedHtml.replace(/\{\{client\.industry\}\}/gi, client?.industry || "[Industria]");
+
+                        // Recipient variables
+                        processedHtml = processedHtml.replace(/\{\{recipient\.name\}\}/gi, recipientData.fullName);
+                        processedHtml = processedHtml.replace(/\{\{recipient\.position\}\}/gi, recipientData.position || "");
+                        processedHtml = processedHtml.replace(/\{\{recipient\.salutation\}\}/gi, `${recipientData.salutationPrefix} ${recipientData.fullName}`);
+
+                        // Date variables
+                        const formattedDate = format(new Date(), "d 'de' MMMM 'de' yyyy", { locale: es });
+                        processedHtml = processedHtml.replace(/\{\{date\}\}/gi, formattedDate);
+                        processedHtml = processedHtml.replace(/\{\{proposal\.date\}\}/gi, formattedDate);
+
+                        // Entity count
+                        processedHtml = processedHtml.replace(/\{\{entity_count\}\}/gi, String(entities.length));
+
+                        // Set the processed content to the editor
+                        setDraftContent(processedHtml);
+
+                        toast({
+                          title: "Plantilla cargada",
+                          description: `Se ha aplicado la plantilla "${template.name}" al documento`,
+                        });
+                      } else {
+                        toast({
+                          title: "Plantilla sin contenido",
+                          description: "Esta plantilla no tiene contenido HTML definido",
+                          variant: "destructive",
+                        });
+                      }
+                    } else {
+                      // Clearing template selection
+                      setSelectedDocumentTemplate(null);
+                    }
+                  };
+
+                  // Check if editor has custom content that would be overwritten
+                  const hasExistingContent = draftContent && draftContent.trim().length > 100;
+
+                  if (hasExistingContent && template) {
+                    // Show confirmation before overwriting
+                    if (window.confirm("¿Deseas reemplazar el contenido actual del documento con la plantilla seleccionada?\n\nEsto sobrescribirá todo el texto que hayas editado.")) {
+                      applyTemplate();
+                    }
+                  } else {
+                    applyTemplate();
+                  }
                 }}
               />
 
