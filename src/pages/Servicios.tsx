@@ -497,7 +497,7 @@ export default function Servicios() {
                   <SortableTableHead sortKey="name" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Nombre</SortableTableHead>
                   <SortableTableHead sortKey="description" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Descripción</SortableTableHead>
                   <SortableTableHead sortKey="fee_type" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Tipo de Cobro</SortableTableHead>
-                  <TableHead className="text-right">Honorarios</TableHead>
+                  <SortableTableHead sortKey="suggested_fee" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort} className="text-right">Honorarios</SortableTableHead>
                   <SortableTableHead sortKey="is_active" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Estado</SortableTableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>

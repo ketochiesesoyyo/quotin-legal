@@ -10,6 +10,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import { TableSearch } from "@/components/ui/table-search";
+import { useTableSort } from "@/hooks/useTableSort";
 import { FileText, CheckCircle, Clock, XCircle, AlertCircle } from "lucide-react";
 import type { Tables, Enums } from "@/integrations/supabase/types";
 
@@ -53,6 +56,14 @@ export default function Documentos() {
   const getDocsByStatus = (status: DocumentStatus) => {
     return documents?.filter((d) => d.status === status) || [];
   };
+
+  // Prepare data with computed fields for sorting
+  const docsWithComputedFields = documents?.map((doc) => ({
+    ...doc,
+    caseName: getCaseName(doc.case_id),
+  }));
+
+  const { sortConfig, handleSort, searchQuery, setSearchQuery, filteredData } = useTableSort(docsWithComputedFields);
 
   return (
     <div className="space-y-6">
@@ -101,8 +112,13 @@ export default function Documentos() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Todos los Documentos</CardTitle>
+          <TableSearch 
+            value={searchQuery} 
+            onChange={setSearchQuery} 
+            placeholder="Buscar documento..."
+          />
         </CardHeader>
         <CardContent>
           {docsLoading ? (
@@ -115,20 +131,20 @@ export default function Documentos() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Caso</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Notas</TableHead>
+                  <SortableTableHead sortKey="name" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Nombre</SortableTableHead>
+                  <SortableTableHead sortKey="caseName" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Caso</SortableTableHead>
+                  <SortableTableHead sortKey="status" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Estado</SortableTableHead>
+                  <SortableTableHead sortKey="created_at" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Fecha</SortableTableHead>
+                  <SortableTableHead sortKey="notes" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Notas</SortableTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {documents?.map((doc) => {
+                {filteredData?.map((doc) => {
                   const StatusIcon = STATUS_CONFIG[doc.status].icon;
                   return (
                     <TableRow key={doc.id}>
                       <TableCell className="font-medium">{doc.name}</TableCell>
-                      <TableCell>{getCaseName(doc.case_id)}</TableCell>
+                      <TableCell>{doc.caseName}</TableCell>
                       <TableCell>
                         <Badge className={STATUS_CONFIG[doc.status].color}>
                           <StatusIcon className="mr-1 h-3 w-3" />
