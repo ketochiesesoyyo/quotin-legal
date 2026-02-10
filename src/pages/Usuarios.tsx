@@ -60,6 +60,10 @@ export default function Usuarios() {
     },
   });
 
+  const getUserRole = (userId: string): AppRole => {
+    return userRoles?.find((r) => r.user_id === userId)?.role || "asistente";
+  };
+
   // Prepare data with computed fields for sorting
   const profilesWithComputedFields = profiles?.map((profile) => ({
     ...profile,
@@ -93,10 +97,6 @@ export default function Usuarios() {
       toast({ title: "Error al actualizar rol", description: getErrorMessage(error), variant: "destructive" });
     },
   });
-
-  const getUserRole = (userId: string): AppRole => {
-    return userRoles?.find((r) => r.user_id === userId)?.role || "asistente";
-  };
 
   const getRoleCount = (role: AppRole) => {
     return userRoles?.filter((r) => r.role === role).length || 0;
