@@ -103,8 +103,14 @@ export default function Clientes() {
     return clientContacts.find((c) => c.is_primary) || clientContacts[0];
   };
 
-  // Sortable and searchable data
-  const { sortConfig, handleSort, searchQuery, setSearchQuery, filteredData } = useTableSort(clients);
+  // Prepare data with computed fields for sorting
+  const clientsWithComputedFields = clients?.map((client) => ({
+    ...client,
+    primaryContactName: getPrimaryContact(client.id)?.full_name || "",
+    entitiesCount: getClientEntities(client.id).length,
+  }));
+
+  const { sortConfig, handleSort, searchQuery, setSearchQuery, filteredData } = useTableSort(clientsWithComputedFields);
 
   return (
     <div className="space-y-6">
@@ -190,8 +196,8 @@ export default function Clientes() {
                 <TableRow>
                   <SortableTableHead sortKey="group_name" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Cliente</SortableTableHead>
                   <SortableTableHead sortKey="industry" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Industria</SortableTableHead>
-                  <TableHead>Contacto Principal</TableHead>
-                  <TableHead className="text-center">Razones Sociales</TableHead>
+                  <SortableTableHead sortKey="primaryContactName" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Contacto Principal</SortableTableHead>
+                  <SortableTableHead sortKey="entitiesCount" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort} className="text-center">Razones Sociales</SortableTableHead>
                   <SortableTableHead sortKey="status" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort} className="text-center">Estado</SortableTableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
@@ -206,7 +212,12 @@ export default function Clientes() {
                     <TableRow key={client.id} className="cursor-pointer hover:bg-muted/50">
                       <TableCell>
                         <div>
-                          <p className="font-medium">{client.group_name}</p>
+                          <button
+                            onClick={() => navigate(`/clientes/${client.id}`)}
+                            className="font-medium text-primary hover:underline text-left"
+                          >
+                            {client.group_name}
+                          </button>
                           {client.alias && (
                             <p className="text-sm text-muted-foreground">{client.alias}</p>
                           )}

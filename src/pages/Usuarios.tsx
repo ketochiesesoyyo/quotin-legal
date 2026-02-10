@@ -60,7 +60,13 @@ export default function Usuarios() {
     },
   });
 
-  const { sortConfig, handleSort, searchQuery, setSearchQuery, filteredData } = useTableSort(profiles);
+  // Prepare data with computed fields for sorting
+  const profilesWithComputedFields = profiles?.map((profile) => ({
+    ...profile,
+    userRole: getUserRole(profile.user_id),
+  }));
+
+  const { sortConfig, handleSort, searchQuery, setSearchQuery, filteredData } = useTableSort(profilesWithComputedFields);
 
   const updateRoleMutation = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
@@ -164,7 +170,7 @@ export default function Usuarios() {
                 <TableRow>
                   <SortableTableHead sortKey="full_name" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Nombre</SortableTableHead>
                   <SortableTableHead sortKey="email" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Email</SortableTableHead>
-                  <TableHead>Rol</TableHead>
+                  <SortableTableHead sortKey="userRole" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Rol</SortableTableHead>
                   <SortableTableHead sortKey="created_at" currentSortKey={sortConfig.key} currentDirection={sortConfig.direction} onSort={handleSort}>Fecha de Registro</SortableTableHead>
                   <TableHead>Cambiar Rol</TableHead>
                 </TableRow>
